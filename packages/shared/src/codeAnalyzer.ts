@@ -1,4 +1,4 @@
-import { CompatibilityReport, CompatibilityCheckItem, CompatibilityStatus } from '@/types/project';
+import { CompatibilityReport, CompatibilityCheckItem, CompatibilityStatus } from './types/project';
 
 export interface CodeInspectionInput {
   html: string;

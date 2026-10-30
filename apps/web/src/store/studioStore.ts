@@ -28,6 +28,7 @@ export interface StudioState {
   project: ProjectData;
   compatibility: CompatibilityReport;
   capabilities: BrowserCapabilities | null;
+  isDirty: boolean;
 
   // Audio
   audioSettings: AudioSettings;
@@ -46,6 +47,7 @@ export interface StudioState {
   isExporting: boolean;
   exportProgress: ExportProgress;
   exportResult: ExportResult | null;
+  exportError: string | null;
   abortController: AbortController | null;
 
   // Actions
@@ -56,6 +58,10 @@ export interface StudioState {
   setEntryHtmlPath: (path: string) => void;
   updateCode: (html: string, css?: string, js?: string) => void;
   setMode: (mode: UploadMode) => void;
+  setProjectTitle: (title: string) => void;
+  newProject: () => void;
+  resetProject: () => void;
+  clearExportError: () => void;
 
   // Audio actions
   loadAudioFile: (file: File) => Promise<void>;
@@ -101,6 +107,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
     },
     compatibility: initialInspection,
     capabilities: null,
+    isDirty: false,
 
     audioSettings: {
       sourceMode: 'none',
@@ -148,6 +155,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
       message: '',
     },
     exportResult: null,
+    exportError: null,
     abortController: null,
 
     initialize: async () => {
@@ -162,8 +170,11 @@ export const useStudioStore = create<StudioState>((set, get) => {
     },
 
     loadTemplate: (templateId: string) => {
-      const { project } = get();
+      const { project, audioSettings, exportResult } = get();
       revokeProjectAssets(project.assets);
+      if (audioSettings.blobUrl) URL.revokeObjectURL(audioSettings.blobUrl);
+      if (exportResult?.url) URL.revokeObjectURL(exportResult.url);
+
       const template = SAMPLE_TEMPLATES.find((t) => t.id === templateId) || SAMPLE_TEMPLATES[0];
       const inspection = inspectProjectCode({
         html: template.html,
@@ -192,14 +203,29 @@ export const useStudioStore = create<StudioState>((set, get) => {
           durationSeconds: template.defaultDuration,
           filename: `export-${template.id}`,
         },
+        audioSettings: {
+          ...state.audioSettings,
+          sourceMode: 'none',
+          file: undefined,
+          fileName: undefined,
+          blobUrl: undefined,
+          durationSeconds: 0,
+        },
+        decodedAudio: null,
+        isDirty: false,
+        exportError: null,
+        exportResult: null,
         previewKey: state.previewKey + 1,
         currentTime: 0,
       }));
     },
 
     loadHtmlFile: async (file: File) => {
-      const { project } = get();
+      const { project, audioSettings, exportResult } = get();
       revokeProjectAssets(project.assets);
+      if (audioSettings.blobUrl) URL.revokeObjectURL(audioSettings.blobUrl);
+      if (exportResult?.url) URL.revokeObjectURL(exportResult.url);
+
       const text = await file.text();
       const inspection = inspectProjectCode({
         html: text,
@@ -227,14 +253,20 @@ export const useStudioStore = create<StudioState>((set, get) => {
           durationSeconds: detectedDur,
           filename: title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         },
+        isDirty: false,
+        exportError: null,
+        exportResult: null,
         previewKey: state.previewKey + 1,
         currentTime: 0,
       }));
     },
 
     loadZipArchive: async (file: File) => {
-      const { project } = get();
+      const { project, audioSettings, exportResult } = get();
       revokeProjectAssets(project.assets);
+      if (audioSettings.blobUrl) URL.revokeObjectURL(audioSettings.blobUrl);
+      if (exportResult?.url) URL.revokeObjectURL(exportResult.url);
+
       const extracted = await processZipFile(file);
       const defaultEntryAsset = extracted.assets[extracted.defaultEntry];
       const htmlContent = defaultEntryAsset?.content || '';
@@ -270,6 +302,9 @@ export const useStudioStore = create<StudioState>((set, get) => {
           durationSeconds: 5,
           filename: title.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         },
+        isDirty: false,
+        exportError: null,
+        exportResult: null,
         previewKey: state.previewKey + 1,
         currentTime: 0,
       }));
@@ -313,6 +348,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
           jsContent: js,
         },
         compatibility: inspection,
+        isDirty: true,
         previewKey: state.previewKey + 1,
       }));
     },
@@ -326,8 +362,139 @@ export const useStudioStore = create<StudioState>((set, get) => {
       }));
     },
 
+    setProjectTitle: (title: string) => {
+      const sanitized = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      set((state) => ({
+        project: {
+          ...state.project,
+          title,
+        },
+        exportSettings: {
+          ...state.exportSettings,
+          filename: sanitized || 'motion-studio-export',
+        },
+        isDirty: true,
+      }));
+    },
+
+    newProject: () => {
+      const { project, audioSettings, exportResult } = get();
+      revokeProjectAssets(project.assets);
+      if (audioSettings.blobUrl) URL.revokeObjectURL(audioSettings.blobUrl);
+      if (exportResult?.url) URL.revokeObjectURL(exportResult.url);
+
+      const starterHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, #1e1b4b 0%, #030712 100%);
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+    .orb {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      box-shadow: 0 0 50px rgba(99, 102, 241, 0.5);
+      animation: pulse 3s ease-in-out infinite alternate;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.9) rotate(0deg); border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; }
+      100% { transform: scale(1.15) rotate(180deg); border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    }
+    h2 {
+      margin-top: 32px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+  </style>
+</head>
+<body>
+  <div class="orb"></div>
+  <h2>New Motion Project</h2>
+</body>
+</html>`;
+
+      const inspection = inspectProjectCode({
+        html: starterHtml,
+        missingAssets: [],
+      });
+
+      set((state) => ({
+        project: {
+          id: 'custom-project',
+          title: 'Untitled Motion Project',
+          mode: 'code',
+          htmlContent: starterHtml,
+          entryHtmlPath: 'index.html',
+          availableHtmlFiles: ['index.html'],
+          assets: {},
+          detectedDuration: 3,
+          missingAssets: [],
+        },
+        compatibility: inspection,
+        exportSettings: {
+          ...state.exportSettings,
+          durationSeconds: 3,
+          filename: 'untitled-motion-project',
+        },
+        audioSettings: {
+          sourceMode: 'none',
+          durationSeconds: 0,
+          volume: 1.0,
+          startOffsetSeconds: 0,
+          trimInSeconds: 0,
+          trimOutSeconds: 0,
+          fadeInSeconds: 0.5,
+          fadeOutSeconds: 0.5,
+        },
+        decodedAudio: null,
+        isDirty: false,
+        exportResult: null,
+        exportError: null,
+        previewKey: state.previewKey + 1,
+        currentTime: 0,
+      }));
+    },
+
+    resetProject: () => {
+      const { project } = get();
+      const template = SAMPLE_TEMPLATES.find((t) => t.id === project.id);
+      if (template) {
+        get().loadTemplate(template.id);
+      } else {
+        // Reset to default template
+        get().loadTemplate(DEFAULT_TEMPLATE.id);
+      }
+    },
+
+    clearExportError: () => {
+      set({ exportError: null });
+    },
+
     loadAudioFile: async (file: File) => {
       try {
+        const { audioSettings } = get();
+        if (audioSettings.blobUrl) {
+          URL.revokeObjectURL(audioSettings.blobUrl);
+        }
+
         const decoded = await decodeAudioFile(file);
         const url = URL.createObjectURL(file);
 
@@ -343,6 +510,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
             trimInSeconds: 0,
             trimOutSeconds: decoded.duration,
           },
+          isDirty: true,
           // If duration policy is set to audio, sync duration
           exportSettings: {
             ...state.exportSettings,
@@ -373,11 +541,16 @@ export const useStudioStore = create<StudioState>((set, get) => {
             ...state.exportSettings,
             durationSeconds: newDurationSeconds,
           },
+          isDirty: true,
         };
       });
     },
 
     clearAudio: () => {
+      const { audioSettings } = get();
+      if (audioSettings.blobUrl) {
+        URL.revokeObjectURL(audioSettings.blobUrl);
+      }
       set((state) => ({
         decodedAudio: null,
         audioSettings: {
@@ -390,6 +563,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
           fadeInSeconds: 0.5,
           fadeOutSeconds: 0.5,
         },
+        isDirty: true,
       }));
     },
 
@@ -506,12 +680,19 @@ export const useStudioStore = create<StudioState>((set, get) => {
     reloadPreview: () => set((s) => ({ previewKey: s.previewKey + 1, currentTime: 0 })),
 
     startExport: async (captureCanvas: HTMLCanvasElement) => {
-      const { project, exportSettings, audioSettings, decodedAudio } = get();
+      const { project, exportSettings, audioSettings, decodedAudio, exportResult } = get();
+      
+      // Clean up previous export Blob URL if re-exporting in same session
+      if (exportResult?.url) {
+        URL.revokeObjectURL(exportResult.url);
+      }
+
       const controller = new AbortController();
 
       set({
         isExporting: true,
         abortController: controller,
+        exportError: null,
         exportProgress: {
           status: 'validating',
           currentFrame: 0,
@@ -543,6 +724,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
           isExporting: false,
           abortController: null,
           exportResult: result,
+          exportError: null,
           exportProgress: {
             ...get().exportProgress,
             status: 'completed',
@@ -556,6 +738,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
           set({
             isExporting: false,
             abortController: null,
+            exportError: 'Export was cancelled by user.',
             exportProgress: {
               ...get().exportProgress,
               status: 'cancelled',
@@ -566,6 +749,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
           set({
             isExporting: false,
             abortController: null,
+            exportError: errorMsg,
             exportProgress: {
               ...get().exportProgress,
               status: 'error',
@@ -582,9 +766,23 @@ export const useStudioStore = create<StudioState>((set, get) => {
       if (abortController) {
         abortController.abort();
       }
+      set({
+        isExporting: false,
+        abortController: null,
+        exportError: 'Export was cancelled by user.',
+        exportProgress: {
+          ...get().exportProgress,
+          status: 'cancelled',
+          message: 'Export was cancelled by user.',
+        },
+      });
     },
 
     clearExportResult: () => {
+      const { exportResult } = get();
+      if (exportResult?.url) {
+        URL.revokeObjectURL(exportResult.url);
+      }
       set({ exportResult: null });
     },
   };

@@ -1,32 +1,60 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import path from 'path';
-import fs from 'fs';
+import { ProjectDatabase } from './db/projectDatabase';
+import { ProjectManager } from './project/projectManager';
+import { FFmpegPipeline } from './rendering/ffmpegPipeline';
+import { HeadlessRenderer } from './rendering/headlessRenderer';
+import { registerIpcHandlers } from './ipc/ipcHandlers';
 
 let mainWindow: BrowserWindow | null = null;
 
-function createWindow() {
+async function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 880,
-    minWidth: 1024,
-    minHeight: 700,
+    width: 1440,
+    height: 920,
+    minWidth: 1080,
+    minHeight: 720,
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#090d16',
+    title: 'HTML Motion Studio Desktop',
     webPreferences: {
       preload: path.join(__dirname, '../preload/preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      webgl: true,
     },
   });
 
-  // In production load packaged app or web build
-  if (process.env.ELECTRON_START_URL) {
-    mainWindow.loadURL(process.env.ELECTRON_START_URL);
+  const userDataPath = app.getPath('userData');
+
+  // Initialize Core Services
+  const projectDb = new ProjectDatabase(userDataPath);
+  await projectDb.initialize();
+
+  const projectManager = new ProjectManager(userDataPath);
+  const ffmpegPipeline = new FFmpegPipeline();
+  const headlessRenderer = new HeadlessRenderer(userDataPath, ffmpegPipeline);
+
+  // Register Secure IPC Handlers
+  registerIpcHandlers(
+    mainWindow,
+    projectManager,
+    projectDb,
+    ffmpegPipeline,
+    headlessRenderer
+  );
+
+  // In development load Vite dev server if available, else load packaged dist
+  const devUrl = process.env.ELECTRON_START_URL;
+  if (devUrl) {
+    mainWindow.loadURL(devUrl);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html')).catch(() => {
-      // Fallback message
-      mainWindow?.loadURL(`data:text/html,<html><body style="background:#090d16;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;"><h2>HTML Motion Studio Desktop Initialized</h2></body></html>`);
+      // Fallback
+      mainWindow?.loadURL(
+        `data:text/html,<html><body style="background:#090d16;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;"><h2>HTML Motion Studio Desktop Initialized</h2></body></html>`
+      );
     });
   }
 
@@ -35,45 +63,18 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  createWindow();
-
-  // Native File Picker Dialog
-  ipcMain.handle('dialog:openProject', async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ['openFile'],
-      filters: [
-        { name: 'HTML & Archives', extensions: ['html', 'htm', 'zip'] },
-      ],
-    });
-    return result;
-  });
-
-  // Native Save File Dialog
-  ipcMain.handle('dialog:saveVideo', async (_, defaultFilename) => {
-    const result = await dialog.showSaveDialog({
-      defaultPath: defaultFilename,
-      filters: [
-        { name: 'MP4 Video (*.mp4)', extensions: ['mp4'] },
-        { name: 'Apple ProRes 4444 (*.mov)', extensions: ['mov'] },
-        { name: 'WebM Video (*.webm)', extensions: ['webm'] },
-      ],
-    });
-    return result;
-  });
-
-  // Native Headless Frame-Accurate Stepping Pipeline Hook
-  ipcMain.handle('render:startDeterministicExport', async (_, renderConfig) => {
-    // Desktop engine hooks into Chromium headless GPU offscreen rendering
-    return { success: true, message: 'Deterministic hardware rendering completed.' };
-  });
+app.whenReady().then(async () => {
+  await createWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
   });
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
-

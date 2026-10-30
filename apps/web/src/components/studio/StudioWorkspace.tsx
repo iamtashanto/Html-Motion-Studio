@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useStudioStore } from '@/store/studioStore';
+import { ProjectHeader } from '../project/ProjectHeader';
 import { SandboxedPreview } from '../preview/SandboxedPreview';
 import { UploadZone } from '../upload/UploadZone';
 import { CompatibilityReportCard } from '../compatibility/CompatibilityReportCard';
@@ -9,6 +10,7 @@ import { AudioSection } from '../audio/AudioSection';
 import { OutputSettings } from '../settings/OutputSettings';
 import { ExportProgressModal } from '../export/ExportProgressModal';
 import { ExportResultModal } from '../export/ExportResultModal';
+import { ExportErrorBanner } from '../export/ExportErrorBanner';
 import { DesktopCompanionBanner } from '../desktop/DesktopCompanionBanner';
 import {
   Video,
@@ -52,9 +54,15 @@ export const StudioWorkspace: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Hidden offscreen/mirror canvas used by the render engine */}
       <canvas ref={captureCanvasRef} className="hidden" />
+
+      {/* Project Management & Header Toolbar */}
+      <ProjectHeader />
+
+      {/* Export Error Notification & Recovery Banner */}
+      <ExportErrorBanner onRetry={handleStartExport} />
 
       {/* Main Studio Grid: Left preview & upload, Right settings & audio */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
