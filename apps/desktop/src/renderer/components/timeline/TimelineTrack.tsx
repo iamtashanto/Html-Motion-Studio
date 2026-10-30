@@ -42,6 +42,10 @@ export const TimelineTrack: React.FC = () => {
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
     setIsScrubbing(true);
     setIsPlaying(false);
     updateSeekFromPointer(e);
@@ -53,8 +57,13 @@ export const TimelineTrack: React.FC = () => {
     }
   };
 
-  const handlePointerUp = () => {
-    setIsScrubbing(false);
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isScrubbing) {
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      setIsScrubbing(false);
+    }
   };
 
   const updateSeekFromPointer = (e: React.PointerEvent) => {
@@ -270,7 +279,10 @@ export const TimelineTrack: React.FC = () => {
           </div>
 
           {/* Video Track Visualizer Bar */}
-          <div className="h-6 w-full bg-blue-950/30 border border-blue-600/30 rounded-lg flex items-center px-3 relative overflow-hidden">
+          <div
+            onPointerDown={handlePointerDown}
+            className="h-6 w-full bg-blue-950/30 border border-blue-600/30 rounded-lg flex items-center px-3 relative overflow-hidden cursor-pointer"
+          >
             <div
               style={{ width: `${progressPct}%` }}
               className="absolute top-0 bottom-0 left-0 bg-blue-600/20 border-r border-blue-500/60 pointer-events-none"

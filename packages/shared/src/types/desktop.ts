@@ -97,6 +97,13 @@ export interface DesktopApiBridge {
   openPath: (path: string) => Promise<string>;
   showItemInFolder: (path: string) => Promise<void>;
 
+  // Window Controls
+  minimizeWindow?: () => Promise<void>;
+  maximizeWindow?: () => Promise<boolean>;
+  closeWindow?: () => Promise<void>;
+  isMaximized?: () => Promise<boolean>;
+  getPlatform?: () => Promise<string>;
+
   // Event Subscriptions
   onExportProgress: (callback: (progress: DesktopExportProgress) => void) => () => void;
 }

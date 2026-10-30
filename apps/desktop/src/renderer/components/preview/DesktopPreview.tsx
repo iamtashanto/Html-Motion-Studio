@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { useDesktopStudioStore } from '../../store/desktopStudioStore';
 import {
   Play,
@@ -15,6 +15,99 @@ import {
   Layers,
 } from 'lucide-react';
 
+function injectPreviewController(rawHtml: string): string {
+  const script = `
+<script id="__hms_preview_controller__">
+(function() {
+  window.__HMS_VIRTUAL_TIME__ = 0;
+  window.__HMS_IS_PLAYING__ = false;
+
+  window.__HMS_SEEK__ = function(timeSeconds, playState) {
+    window.__HMS_VIRTUAL_TIME__ = timeSeconds;
+    if (typeof playState === 'boolean') {
+      window.__HMS_IS_PLAYING__ = playState;
+    }
+
+    // 1. Strategy A Custom Adapter (GSAP, Canvas renderFrame, Lottie)
+    if (window.__HTML_MOTION_STUDIO__) {
+      try {
+        if (typeof window.__HTML_MOTION_STUDIO__.seek === 'function') {
+          window.__HTML_MOTION_STUDIO__.seek(timeSeconds);
+        }
+        if (typeof window.__HTML_MOTION_STUDIO__.renderFrame === 'function') {
+          window.__HTML_MOTION_STUDIO__.renderFrame(timeSeconds);
+        }
+        if (window.__HMS_IS_PLAYING__ && typeof window.__HTML_MOTION_STUDIO__.play === 'function') {
+          window.__HTML_MOTION_STUDIO__.play();
+        } else if (!window.__HMS_IS_PLAYING__ && typeof window.__HTML_MOTION_STUDIO__.pause === 'function') {
+          window.__HTML_MOTION_STUDIO__.pause();
+        }
+      } catch (err) {}
+    }
+
+    // 2. CSS Animations & Transitions (Web Animations API)
+    if (document.getAnimations) {
+      try {
+        var anims = document.getAnimations();
+        for (var i = 0; i < anims.length; i++) {
+          var a = anims[i];
+          try {
+            a.currentTime = timeSeconds * 1000;
+            if (window.__HMS_IS_PLAYING__) {
+              a.play();
+            } else {
+              a.pause();
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
+    }
+
+    // 3. HTML5 Video Elements
+    try {
+      var vids = document.querySelectorAll('video');
+      for (var j = 0; j < vids.length; j++) {
+        var vid = vids[j];
+        try {
+          vid.currentTime = timeSeconds;
+          if (window.__HMS_IS_PLAYING__) {
+            vid.play().catch(function(){});
+          } else {
+            vid.pause();
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+  };
+
+  window.addEventListener('message', function(ev) {
+    if (!ev.data || typeof ev.data !== 'object') return;
+    if (ev.data.type === 'HMS_SEEK') {
+      window.__HMS_SEEK__(ev.data.time, ev.data.isPlaying);
+    } else if (ev.data.type === 'HMS_PLAY') {
+      window.__HMS_SEEK__(ev.data.time !== undefined ? ev.data.time : window.__HMS_VIRTUAL_TIME__, true);
+    } else if (ev.data.type === 'HMS_PAUSE') {
+      window.__HMS_SEEK__(ev.data.time !== undefined ? ev.data.time : window.__HMS_VIRTUAL_TIME__, false);
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    window.__HMS_SEEK__(0, false);
+  });
+})();
+</script>
+`;
+
+  if (!rawHtml) return '';
+  if (rawHtml.includes('<head>')) {
+    return rawHtml.replace('<head>', '<head>' + script);
+  } else if (rawHtml.includes('<html>')) {
+    return rawHtml.replace('<html>', '<html><head>' + script + '</head>');
+  } else {
+    return script + rawHtml;
+  }
+}
+
 export const DesktopPreview: React.FC = () => {
   const {
     project,
@@ -26,6 +119,7 @@ export const DesktopPreview: React.FC = () => {
     exportSettings,
     setIsPlaying,
     setCurrentTime,
+    seek,
     restart,
     setPreviewZoom,
     setPreviewBackground,
@@ -41,22 +135,40 @@ export const DesktopPreview: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [stageDimensions, setStageDimensions] = useState({ width: 900, height: 600 });
 
-  // Sync external scrubbing/seeks into timeRef
-  useEffect(() => {
-    if (!isPlaying) {
-      timeRef.current = currentTime;
-      if (iframeRef.current && iframeRef.current.contentWindow) {
-        try {
-          const win = iframeRef.current.contentWindow as unknown as {
-            __HMS_SEEK__?: (t: number) => void;
-          };
-          if (typeof win.__HMS_SEEK__ === 'function') {
-            win.__HMS_SEEK__(currentTime);
-          }
-        } catch {}
+  const previewHtml = useMemo(() => {
+    return injectPreviewController(project.htmlContent);
+  }, [project.htmlContent]);
+
+  const sendSeekToIframe = useCallback((time: number, play: boolean) => {
+    if (!iframeRef.current || !iframeRef.current.contentWindow) return;
+    try {
+      const win = iframeRef.current.contentWindow as unknown as {
+        __HMS_SEEK__?: (t: number, p: boolean) => void;
+      };
+      if (typeof win.__HMS_SEEK__ === 'function') {
+        win.__HMS_SEEK__(time, play);
       }
+    } catch {}
+    try {
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'HMS_SEEK', time, isPlaying: play },
+        '*'
+      );
+    } catch {}
+  }, []);
+
+  // Sync external scrubbing/seeks into timeRef and iframe
+  useEffect(() => {
+    if (!isPlaying || Math.abs(currentTime - timeRef.current) > 0.05) {
+      timeRef.current = currentTime;
+      sendSeekToIframe(currentTime, isPlaying);
     }
-  }, [currentTime, isPlaying]);
+  }, [currentTime, isPlaying, sendSeekToIframe]);
+
+  // Sync play/pause state into iframe
+  useEffect(() => {
+    sendSeekToIframe(timeRef.current, isPlaying);
+  }, [isPlaying, sendSeekToIframe]);
 
   // Measure stage dimensions for responsive viewport fitting
   useEffect(() => {
@@ -112,19 +224,7 @@ export const DesktopPreview: React.FC = () => {
       timeRef.current = nextTime;
       setCurrentTime(nextTime);
 
-      // Seek inside iframe directly
-      if (iframeRef.current && iframeRef.current.contentWindow) {
-        try {
-          const win = iframeRef.current.contentWindow as unknown as {
-            __HMS_SEEK__?: (t: number) => void;
-          };
-          if (typeof win.__HMS_SEEK__ === 'function') {
-            win.__HMS_SEEK__(nextTime);
-          }
-        } catch {
-          // ignore sandbox boundaries
-        }
-      }
+      sendSeekToIframe(nextTime, true);
 
       if (isPlaying) {
         animFrameRef.current = requestAnimationFrame(loop);
@@ -136,7 +236,7 @@ export const DesktopPreview: React.FC = () => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying, exportSettings.durationSeconds, exportSettings.loopAnimationIfShorter, setCurrentTime, setIsPlaying]);
+  }, [isPlaying, exportSettings.durationSeconds, exportSettings.loopAnimationIfShorter, setCurrentTime, setIsPlaying, sendSeekToIframe]);
 
   // Background style helper
   const bgClasses = {
@@ -282,9 +382,12 @@ export const DesktopPreview: React.FC = () => {
           <iframe
             key={previewKey}
             ref={iframeRef}
-            srcDoc={project.htmlContent}
+            srcDoc={previewHtml}
             title="HTML Animation Preview"
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-same-origin"
+            onLoad={() => {
+              sendSeekToIframe(timeRef.current, isPlaying);
+            }}
             className={`w-full h-full border-0 ${isResizing ? 'pointer-events-none' : 'pointer-events-auto'}`}
           />
         </div>
@@ -298,6 +401,7 @@ export const DesktopPreview: React.FC = () => {
             onClick={() => setIsPlaying(!isPlaying)}
             className="w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition shadow-md shadow-blue-500/25 active:scale-95"
             title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
           >
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
           </button>
@@ -305,18 +409,27 @@ export const DesktopPreview: React.FC = () => {
           <button
             onClick={() => {
               setIsPlaying(false);
-              setCurrentTime(0);
+              seek(0);
+              timeRef.current = 0;
+              sendSeekToIframe(0, false);
             }}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            title="Stop"
+            title="Stop & Rewind to 0s"
+            aria-label="Stop & Rewind"
           >
             <Square className="w-3.5 h-3.5" />
           </button>
 
           <button
-            onClick={restart}
+            onClick={() => {
+              seek(0);
+              timeRef.current = 0;
+              setIsPlaying(true);
+              sendSeekToIframe(0, true);
+            }}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            title="Restart Animation"
+            title="Restart Animation (0s)"
+            aria-label="Restart Animation"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>

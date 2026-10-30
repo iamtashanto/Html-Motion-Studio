@@ -33,9 +33,16 @@ const desktopApi: DesktopApiBridge = {
 
   // System & Shell
   getSystemCapabilities: () => ipcRenderer.invoke('system:getCapabilities'),
+  getPlatform: () => ipcRenderer.invoke('system:getPlatform'),
   openPath: (targetPath: string) => ipcRenderer.invoke('shell:openPath', targetPath),
   showItemInFolder: (targetPath: string) =>
     ipcRenderer.invoke('shell:showItemInFolder', targetPath),
+
+  // Window Controls
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close'),
+  isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
 
   // Event Subscriptions
   onExportProgress: (callback: (progress: DesktopExportProgress) => void) => {

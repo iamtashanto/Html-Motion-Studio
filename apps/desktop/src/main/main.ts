@@ -16,6 +16,7 @@ async function createWindow() {
     minWidth: 1080,
     minHeight: 720,
     titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: 16, y: 18 },
     backgroundColor: '#090d16',
     title: 'HTML Motion Studio Desktop',
     webPreferences: {

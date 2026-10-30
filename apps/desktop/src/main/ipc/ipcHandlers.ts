@@ -167,12 +167,46 @@ export function registerIpcHandlers(
     return ffmpegPipeline.getSystemCapabilities();
   });
 
+  ipcMain.handle('system:getPlatform', async () => {
+    return process.platform;
+  });
+
   ipcMain.handle('shell:openPath', async (_, targetPath: string) => {
     return shell.openPath(targetPath);
   });
 
   ipcMain.handle('shell:showItemInFolder', async (_, targetPath: string) => {
     shell.showItemInFolder(targetPath);
+  });
+
+  // Window Controls
+  ipcMain.handle('window:minimize', async () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.minimize();
+    }
+  });
+
+  ipcMain.handle('window:maximize', async () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+        return false;
+      } else {
+        mainWindow.maximize();
+        return true;
+      }
+    }
+    return false;
+  });
+
+  ipcMain.handle('window:close', async () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+    }
+  });
+
+  ipcMain.handle('window:isMaximized', async () => {
+    return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isMaximized() : false;
   });
 }
 

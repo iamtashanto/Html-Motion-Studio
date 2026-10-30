@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDesktopStudioStore } from '../../store/desktopStudioStore';
 import {
   Film,
@@ -18,6 +18,9 @@ import {
   PanelLeft,
   PanelBottom,
   PanelRight,
+  Minus,
+  Square,
+  X,
 } from 'lucide-react';
 
 interface AppToolbarProps {
@@ -50,6 +53,19 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
   const [titleInput, setTitleInput] = useState(project.title);
   const [showRecents, setShowRecents] = useState(false);
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const [platform, setPlatform] = useState<string>('darwin');
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  useEffect(() => {
+    if (window.desktopApi?.getPlatform) {
+      window.desktopApi.getPlatform().then((p) => {
+        if (p) setPlatform(p);
+      });
+    } else {
+      const isMac = navigator.userAgent.toLowerCase().includes('mac');
+      setPlatform(isMac ? 'darwin' : 'win32');
+    }
+  }, []);
 
   const handleTitleSubmit = () => {
     if (titleInput.trim()) {
@@ -61,9 +77,24 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
   };
 
   return (
-    <header className="h-14 bg-slate-950 border-b border-slate-800/80 px-4 flex items-center justify-between select-none z-30">
-      {/* Left: Branding & Native File Menu */}
-      <div className="flex items-center gap-3">
+    <header
+      style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+      className="h-14 bg-slate-950 border-b border-slate-800/80 px-4 flex items-center justify-between select-none z-30 shrink-0"
+    >
+      {/* Left: macOS Traffic Lights Reserved Area + Branding & File Menu */}
+      <div
+        className="flex items-center gap-3"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
+        {/* Dedicated spacing for macOS traffic lights (Close, Minimize, Zoom) */}
+        {platform === 'darwin' && (
+          <div
+            className="w-16 shrink-0 h-8 mr-1"
+            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Brand Icon */}
         <div className="flex items-center gap-2 pr-2 border-r border-slate-800">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
@@ -180,7 +211,10 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
       </div>
 
       {/* Center: Editable Project Title & Dirty Status */}
-      <div className="flex items-center gap-3">
+      <div
+        className="flex items-center gap-3"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         {isEditingTitle ? (
           <div className="flex items-center gap-2">
             <input
@@ -227,7 +261,10 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
       </div>
 
       {/* Right: Panel Toggles, Engine Capability Badge & Export CTA */}
-      <div className="flex items-center gap-3">
+      <div
+        className="flex items-center gap-3"
+        style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+      >
         {/* Workspace Panel Toggles */}
         <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
           <button
@@ -281,6 +318,39 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
           <Download className="w-3.5 h-3.5" />
           <span>Export MP4</span>
         </button>
+
+        {/* Non-Mac Window Controls (Windows / Linux) */}
+        {platform !== 'darwin' && (
+          <div className="flex items-center ml-1 border-l border-slate-800 pl-2 gap-1">
+            <button
+              onClick={() => window.desktopApi?.minimizeWindow?.()}
+              className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              title="Minimize Window"
+              aria-label="Minimize Window"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={async () => {
+                const max = await window.desktopApi?.maximizeWindow?.();
+                setIsMaximized(Boolean(max));
+              }}
+              className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition"
+              title={isMaximized ? 'Restore Window' : 'Maximize Window'}
+              aria-label="Maximize or Restore Window"
+            >
+              <Square className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => window.desktopApi?.closeWindow?.()}
+              className="p-1.5 rounded hover:bg-red-600 text-slate-400 hover:text-white transition"
+              title="Close Window"
+              aria-label="Close Window"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
