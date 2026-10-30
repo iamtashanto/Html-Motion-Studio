@@ -39,7 +39,7 @@ export const DesktopCompanionBanner: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <a
-              href="https://htmlmotionstudio.com/download"
+              href="https://htmlmotionstudio.tashanto.com/download"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/25 transition active:scale-95"

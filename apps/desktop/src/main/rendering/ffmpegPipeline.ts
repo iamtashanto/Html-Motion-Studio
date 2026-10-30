@@ -127,6 +127,7 @@ export class FFmpegPipeline {
       '-y', // Overwrite output
       '-framerate', String(settings.fps),
       '-f', 'image2',
+      '-start_number', '1',
       '-i', framePattern,
     ];
 

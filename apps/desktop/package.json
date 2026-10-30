@@ -2,7 +2,7 @@
   "name": "@html-motion-studio/desktop",
   "version": "1.0.0",
   "description": "HTML Motion Studio Desktop — Professional Frame-Accurate Video Rendering Suite",
-  "main": "./dist/main/main.js",
+  "main": "./dist/apps/desktop/src/main/main.js",
   "scripts": {
     "build": "pnpm run build:renderer && pnpm run build:main",
     "build:main": "tsc -p tsconfig.main.json",

@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import { ProjectDatabase } from './db/projectDatabase';
 import { ProjectManager } from './project/projectManager';
 import { FFmpegPipeline } from './rendering/ffmpegPipeline';
@@ -50,12 +51,19 @@ async function createWindow() {
   if (devUrl) {
     mainWindow.loadURL(devUrl);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html')).catch(() => {
-      // Fallback
-      mainWindow?.loadURL(
+    const candidatePaths = [
+      path.join(__dirname, '../../../../renderer/index.html'),
+      path.join(__dirname, '../../renderer/index.html'),
+      path.join(__dirname, '../renderer/index.html'),
+    ];
+    const targetHtml = candidatePaths.find((p) => fs.existsSync(p));
+    if (targetHtml) {
+      mainWindow.loadFile(targetHtml);
+    } else {
+      mainWindow.loadURL(
         `data:text/html,<html><body style="background:#090d16;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;"><h2>HTML Motion Studio Desktop Initialized</h2></body></html>`
       );
-    });
+    }
   }
 
   mainWindow.on('closed', () => {

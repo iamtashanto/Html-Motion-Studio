@@ -3,7 +3,7 @@ import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://htmlmotionstudio.com'),
+  metadataBase: new URL('https://htmlmotionstudio.tashanto.com'),
   title: {
     default: 'HTML Motion Studio Web — Convert HTML Animations Into Videos in Your Browser',
     template: '%s | HTML Motion Studio',
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://htmlmotionstudio.com',
+    url: 'https://htmlmotionstudio.tashanto.com',
     siteName: 'HTML Motion Studio',
     title: 'Convert HTML Animations Into Videos — Right in Your Browser',
     description:
@@ -72,7 +72,7 @@ export default function RootLayout({
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: 'HTML Motion Studio Web',
-    url: 'https://htmlmotionstudio.com',
+    url: 'https://htmlmotionstudio.tashanto.com',
     description:
       'In-browser converter for transforming HTML, CSS, SVG, and JavaScript animations into downloadable MP4 and WebM videos.',
     applicationCategory: 'MultimediaApplication',

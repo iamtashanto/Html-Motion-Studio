@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
         allow: '/',
       },
     ],
-    sitemap: 'https://htmlmotionstudio.com/sitemap.xml',
+    sitemap: 'https://htmlmotionstudio.tashanto.com/sitemap.xml',
   };
 }
 
