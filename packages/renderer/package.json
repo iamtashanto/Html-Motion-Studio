@@ -1,0 +1,13 @@
+{
+  "name": "@html-motion-studio/renderer",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@html-motion-studio/shared": "workspace:*",
+    "jszip": "^3.10.1",
+    "mp4-muxer": "^5.2.0",
+    "webm-muxer": "^5.0.2"
+  }
+}

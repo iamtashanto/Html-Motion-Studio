@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@html-motion-studio/shared": ["../../packages/shared/src/index.ts"],
+      "@html-motion-studio/renderer": ["../../packages/renderer/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}
