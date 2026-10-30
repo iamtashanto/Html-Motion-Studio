@@ -251,13 +251,13 @@ export const SandboxedPreview: React.FC<SandboxedPreviewProps> = ({ captureCanva
             width: '100%',
           }}
         >
-          {/* Dedicated Sandboxed Iframe */}
+          {/* Dedicated Sandboxed Iframe (Hardened: NO allow-same-origin) */}
           <iframe
             key={previewKey}
             ref={iframeRef}
             title="HTML Animation Preview"
             srcDoc={buildSandboxedHtml()}
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts"
             className="w-full h-full border-0 pointer-events-auto"
           />
 

@@ -3,11 +3,13 @@ import { Muxer as WebmMuxer, ArrayBufferTarget as WebmArrayBufferTarget } from '
 import { ExportSettings, ExportProgress, ExportResult } from '@/types/export';
 import { AudioSettings } from '@/types/audio';
 import { renderProcessedAudioBuffer } from '../audio/audioEngine';
+import { rasterizeHtmlSnippetToCanvas } from './domRasterizer';
 
 export interface RenderJobOptions {
   settings: ExportSettings;
   audioSettings: AudioSettings;
   rawAudioBuffer?: AudioBuffer | null;
+  htmlContent?: string;
   captureCanvas: HTMLCanvasElement;
   onProgress: (progress: ExportProgress) => void;
   signal: AbortSignal;
@@ -16,8 +18,7 @@ export interface RenderJobOptions {
 export async function runExportJob(options: RenderJobOptions): Promise<ExportResult> {
   const { settings, audioSettings, rawAudioBuffer, captureCanvas, onProgress, signal } = options;
 
-  const totalFrames = Math.round(settings.durationSeconds * settings.fps);
-  const frameIntervalMs = 1000 / settings.fps;
+  const totalFrames = Math.max(1, Math.round(settings.durationSeconds * settings.fps));
   const startTime = performance.now();
 
   // Validate canvas dimensions
@@ -25,16 +26,16 @@ export async function runExportJob(options: RenderJobOptions): Promise<ExportRes
   captureCanvas.height = settings.height;
 
   // Decide strategy
+  const isWebCodecsAvailable = typeof window !== 'undefined' && 'VideoEncoder' in window;
   const useWebCodecs =
     (settings.engineStrategy === 'auto' || settings.engineStrategy === 'webcodecs') &&
-    typeof window !== 'undefined' &&
-    'VideoEncoder' in window;
+    isWebCodecsAvailable;
 
   if (useWebCodecs) {
     try {
-      return await exportWithWebCodecs(options, totalFrames, frameIntervalMs, startTime);
-    } catch (err) {
-      console.warn('[RenderEngine] WebCodecs pipeline encountered an error, attempting MediaRecorder fallback:', err);
+      return await exportWithWebCodecs(options, totalFrames, startTime);
+    } catch (err: unknown) {
+      console.warn('[RenderEngine] WebCodecs pipeline failed or unhandled, falling back to MediaRecorder:', err);
       if (signal.aborted) {
         throw new Error('Export cancelled by user.');
       }
@@ -47,14 +48,14 @@ export async function runExportJob(options: RenderJobOptions): Promise<ExportRes
 
 /**
  * Strategy C: Frame-by-frame encoding via WebCodecs + MP4 Muxer / WebM Muxer
+ * Includes backpressure flow control, queue monitoring, and AudioEncoder integration.
  */
 async function exportWithWebCodecs(
   options: RenderJobOptions,
   totalFrames: number,
-  frameIntervalMs: number,
   startTime: number
 ): Promise<ExportResult> {
-  const { settings, audioSettings, rawAudioBuffer, captureCanvas, onProgress, signal } = options;
+  const { settings, audioSettings, rawAudioBuffer, htmlContent, captureCanvas, onProgress, signal } = options;
 
   onProgress({
     status: 'preparing',
@@ -64,14 +65,38 @@ async function exportWithWebCodecs(
     elapsedMs: 0,
     estimatedRemainingMs: 0,
     currentFps: 0,
-    message: 'Initializing hardware video encoder and container muxer...',
+    message: 'Initializing WebCodecs VideoEncoder & MP4 container...',
   });
 
   const isMp4 = settings.format === 'mp4';
   const target = isMp4 ? new ArrayBufferTarget() : new WebmArrayBufferTarget();
 
-  // Setup muxer
+  // Prepare audio processing if audio is enabled
+  let processedAudioBuffer: AudioBuffer | null = null;
+  const hasAudio = (audioSettings.sourceMode === 'external' || audioSettings.sourceMode === 'both') && !!rawAudioBuffer;
+
+  if (hasAudio && rawAudioBuffer) {
+    try {
+      processedAudioBuffer = await renderProcessedAudioBuffer(
+        rawAudioBuffer,
+        audioSettings,
+        settings.durationSeconds
+      );
+    } catch (e) {
+      console.warn('[WebCodecs] Audio rendering failed, proceeding without audio:', e);
+    }
+  }
+
+  // Setup Muxer
   let muxer: Muxer<ArrayBufferTarget> | WebmMuxer<WebmArrayBufferTarget>;
+
+  const audioConfig = processedAudioBuffer && typeof window !== 'undefined' && 'AudioEncoder' in window
+    ? {
+        codec: 'aac' as const,
+        numberOfChannels: processedAudioBuffer.numberOfChannels,
+        sampleRate: processedAudioBuffer.sampleRate,
+      }
+    : undefined;
 
   if (isMp4) {
     muxer = new Muxer({
@@ -81,6 +106,7 @@ async function exportWithWebCodecs(
         width: settings.width,
         height: settings.height,
       },
+      audio: audioConfig,
       fastStart: 'in-memory',
     });
   } else {
@@ -92,18 +118,29 @@ async function exportWithWebCodecs(
         height: settings.height,
         frameRate: settings.fps,
       },
+      audio: audioConfig
+        ? {
+            codec: 'A_OPUS',
+            numberOfChannels: audioConfig.numberOfChannels,
+            sampleRate: audioConfig.sampleRate,
+          }
+        : undefined,
     });
   }
 
   // Setup VideoEncoder
-  let encodedChunks = 0;
+  let encoderError: Error | null = null;
   const encoder = new VideoEncoder({
     output: (chunk, meta) => {
-      muxer.addVideoChunk(chunk, meta);
-      encodedChunks++;
+      try {
+        muxer.addVideoChunk(chunk, meta);
+      } catch (err) {
+        console.error('[WebCodecs] Failed to add video chunk to muxer:', err);
+      }
     },
     error: (e) => {
-      console.error('[VideoEncoder] error:', e);
+      console.error('[VideoEncoder] error callback:', e);
+      encoderError = e;
     },
   });
 
@@ -116,6 +153,50 @@ async function exportWithWebCodecs(
     framerate: settings.fps,
   });
 
+  // Setup AudioEncoder if audio is active and AudioEncoder is available
+  let audioElementCount = 0;
+  let audioEncoder: AudioEncoder | null = null;
+
+  if (audioConfig && processedAudioBuffer && 'AudioEncoder' in window) {
+    try {
+      audioEncoder = new AudioEncoder({
+        output: (chunk, meta) => {
+          try {
+            muxer.addAudioChunk(chunk, meta);
+          } catch (err) {
+            console.warn('[WebCodecs] Failed to add audio chunk:', err);
+          }
+        },
+        error: (e) => console.warn('[AudioEncoder] error:', e),
+      });
+
+      audioEncoder.configure({
+        codec: isMp4 ? 'mp4a.40.2' : 'opus',
+        numberOfChannels: processedAudioBuffer.numberOfChannels,
+        sampleRate: processedAudioBuffer.sampleRate,
+        bitrate: settings.audioBitrateKbps * 1000,
+      });
+
+      // Encode audio buffer
+      const audioData = new AudioData({
+        format: 'f32-planar',
+        sampleRate: processedAudioBuffer.sampleRate,
+        numberOfFrames: processedAudioBuffer.length,
+        numberOfChannels: processedAudioBuffer.numberOfChannels,
+        timestamp: 0,
+        data: processedAudioBuffer.getChannelData(0),
+      });
+
+      audioEncoder.encode(audioData);
+      audioData.close();
+      await audioEncoder.flush();
+      audioEncoder.close();
+      audioElementCount++;
+    } catch (e) {
+      console.warn('[WebCodecs] AudioEncoder setup/flush failed:', e);
+    }
+  }
+
   onProgress({
     status: 'capturing',
     currentFrame: 0,
@@ -124,16 +205,39 @@ async function exportWithWebCodecs(
     elapsedMs: 0,
     estimatedRemainingMs: 0,
     currentFps: 0,
-    message: 'Capturing and encoding video frames...',
+    message: 'Capturing and encoding video frames with backpressure management...',
   });
+
+  // Check if canvas already has content or if we should rasterize the HTML snippet
+  if (htmlContent) {
+    await rasterizeHtmlSnippetToCanvas(htmlContent, captureCanvas, {
+      width: settings.width,
+      height: settings.height,
+    });
+  }
 
   const frameDurationMicros = Math.round(1_000_000 / settings.fps);
 
-  // Encode frames sequentially
+  // Encode frames sequentially with backpressure flow control
   for (let f = 0; f < totalFrames; f++) {
     if (signal.aborted) {
       encoder.close();
       throw new Error('Export cancelled by user.');
+    }
+
+    if (encoderError) {
+      encoder.close();
+      throw new Error(`VideoEncoder fatal error: ${(encoderError as Error).message || encoderError}`);
+    }
+
+    // BACKPRESSURE FLOW CONTROL:
+    // If encoder internal queue is buffering too many frames, wait before feeding more
+    while (encoder.encodeQueueSize > 4) {
+      await new Promise((r) => setTimeout(r, 10));
+      if (signal.aborted) {
+        encoder.close();
+        throw new Error('Export cancelled by user.');
+      }
     }
 
     const timestampMicros = f * frameDurationMicros;
@@ -148,9 +252,9 @@ async function exportWithWebCodecs(
     encoder.encode(videoFrame, { keyFrame: isKeyFrame });
     videoFrame.close();
 
-    // Progress calculations
+    // Progress updates
     const elapsed = performance.now() - startTime;
-    const currentFps = f > 0 ? (f / (elapsed / 1000)) : 0;
+    const currentFps = f > 0 ? f / (elapsed / 1000) : 0;
     const remainingFrames = totalFrames - f;
     const estimatedRemainingMs = currentFps > 0 ? (remainingFrames / currentFps) * 1000 : 0;
     const percent = Math.min(92, Math.round((f / totalFrames) * 88) + 5);
@@ -167,7 +271,6 @@ async function exportWithWebCodecs(
         message: `Encoding frame ${f + 1} of ${totalFrames} (${Math.round(currentFps)} fps)...`,
       });
 
-      // Give event loop time to breathe
       await new Promise((r) => setTimeout(r, 0));
     }
   }
@@ -178,9 +281,9 @@ async function exportWithWebCodecs(
     totalFrames,
     percentage: 95,
     elapsedMs: Math.round(performance.now() - startTime),
-    estimatedRemainingMs: 500,
+    estimatedRemainingMs: 300,
     currentFps: settings.fps,
-    message: 'Finalizing video streams and container metadata...',
+    message: 'Flushing encoder and finalizing container multiplexer...',
   });
 
   await encoder.flush();
@@ -205,14 +308,14 @@ async function exportWithWebCodecs(
 }
 
 /**
- * Strategy B: MediaRecorder compatibility fallback (with audio track mixing)
+ * Strategy B: MediaRecorder compatibility fallback (with honest MIME type reporting)
  */
 async function exportWithMediaRecorder(
   options: RenderJobOptions,
   totalFrames: number,
   startTime: number
 ): Promise<ExportResult> {
-  const { settings, audioSettings, rawAudioBuffer, captureCanvas, onProgress, signal } = options;
+  const { settings, audioSettings, rawAudioBuffer, htmlContent, captureCanvas, onProgress, signal } = options;
 
   onProgress({
     status: 'preparing',
@@ -222,8 +325,16 @@ async function exportWithMediaRecorder(
     elapsedMs: 0,
     estimatedRemainingMs: 0,
     currentFps: 0,
-    message: 'Initializing MediaRecorder realtime capture...',
+    message: 'Initializing MediaRecorder realtime capture stream...',
   });
+
+  // Ensure canvas has initial render
+  if (htmlContent) {
+    await rasterizeHtmlSnippetToCanvas(htmlContent, captureCanvas, {
+      width: settings.width,
+      height: settings.height,
+    });
+  }
 
   // 1. Get canvas stream
   const canvasStream = captureCanvas.captureStream(settings.fps);
@@ -231,10 +342,9 @@ async function exportWithMediaRecorder(
 
   // 2. Mix audio if requested and available
   let audioContext: AudioContext | null = null;
-  if (
-    (audioSettings.sourceMode === 'external' || audioSettings.sourceMode === 'both') &&
-    rawAudioBuffer
-  ) {
+  const hasAudio = (audioSettings.sourceMode === 'external' || audioSettings.sourceMode === 'both') && !!rawAudioBuffer;
+
+  if (hasAudio && rawAudioBuffer) {
     try {
       const processedBuffer = await renderProcessedAudioBuffer(
         rawAudioBuffer,
@@ -242,7 +352,9 @@ async function exportWithMediaRecorder(
         settings.durationSeconds
       );
 
-      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       audioContext = new AudioContextClass();
       const dest = audioContext.createMediaStreamDestination();
       const source = audioContext.createBufferSource();
@@ -261,14 +373,22 @@ async function exportWithMediaRecorder(
 
   const combinedStream = new MediaStream(mediaStreamTracks);
 
-  // 3. Select mimeType
+  // 3. Select mimeType with strict honesty
   let mimeType = 'video/webm';
+  let actualFormat: 'mp4' | 'webm' = 'webm';
+
   if (settings.format === 'mp4' && MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')) {
     mimeType = 'video/mp4;codecs=avc1';
+    actualFormat = 'mp4';
   } else if (settings.format === 'mp4' && MediaRecorder.isTypeSupported('video/mp4')) {
     mimeType = 'video/mp4';
+    actualFormat = 'mp4';
   } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
     mimeType = 'video/webm;codecs=vp9';
+    actualFormat = 'webm';
+  } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+    mimeType = 'video/webm;codecs=vp8';
+    actualFormat = 'webm';
   }
 
   const recorder = new MediaRecorder(combinedStream, {
@@ -307,7 +427,7 @@ async function exportWithMediaRecorder(
         elapsedMs: Math.round(elapsed),
         estimatedRemainingMs: Math.round(remaining),
         currentFps: settings.fps,
-        message: `Recording realtime stream (${Math.round(elapsed / 1000)}s / ${Math.round(settings.durationSeconds)}s)...`,
+        message: `Recording realtime stream (${(elapsed / 1000).toFixed(1)}s / ${settings.durationSeconds.toFixed(1)}s)...`,
       });
     }, 200);
 
@@ -316,7 +436,6 @@ async function exportWithMediaRecorder(
       if (audioContext) audioContext.close();
 
       const finalBlob = new Blob(chunks, { type: mimeType });
-      const actualFormat = mimeType.includes('mp4') ? 'mp4' : 'webm';
 
       onProgress({
         status: 'completed',
@@ -326,7 +445,7 @@ async function exportWithMediaRecorder(
         elapsedMs: Math.round(performance.now() - startTime),
         estimatedRemainingMs: 0,
         currentFps: settings.fps,
-        message: 'Realtime recording successfully completed!',
+        message: 'Conversion completed successfully!',
       });
 
       resolve({
@@ -357,4 +476,3 @@ async function exportWithMediaRecorder(
     }, totalDurationMs);
   });
 }
-

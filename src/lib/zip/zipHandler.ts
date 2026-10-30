@@ -1,6 +1,14 @@
 import JSZip from 'jszip';
 import { ProjectAsset } from '@/types/project';
 
+// Strict Security Limits to prevent Zip Bomb and memory exhaustion
+export const ZIP_LIMITS = {
+  MAX_FILES: 500,
+  MAX_SINGLE_FILE_BYTES: 50 * 1024 * 1024, // 50 MB
+  MAX_TOTAL_UNCOMPRESSED_BYTES: 100 * 1024 * 1024, // 100 MB
+  MAX_COMPRESSION_RATIO: 100, // 100:1 ratio warning
+};
+
 // Mime types lookup
 const MIME_TYPES: Record<string, string> = {
   html: 'text/html',
@@ -32,7 +40,7 @@ function getMimeType(filename: string): string {
 /**
  * Validates against directory traversal vulnerabilities.
  */
-function isSafePath(path: string): boolean {
+export function isSafePath(path: string): boolean {
   // Prevent ../ traversal
   if (path.includes('../') || path.includes('..\\')) return false;
   // Prevent leading absolute paths
@@ -49,40 +57,90 @@ export interface ExtractedZipResult {
   missingAssets: string[];
 }
 
+/**
+ * Safely extracts a ZIP archive in memory with decompression bomb and path traversal protection.
+ */
 export async function processZipFile(file: File): Promise<ExtractedZipResult> {
+  if (file.size > ZIP_LIMITS.MAX_SINGLE_FILE_BYTES) {
+    throw new Error(
+      `ZIP archive size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds browser safeguard limit of ${ZIP_LIMITS.MAX_SINGLE_FILE_BYTES / (1024 * 1024)} MB.`
+    );
+  }
+
   const zip = new JSZip();
-  const loadedZip = await zip.loadAsync(file);
+  let loadedZip: JSZip;
+  try {
+    loadedZip = await zip.loadAsync(file);
+  } catch {
+    throw new Error('Malformed or corrupt ZIP archive. Could not parse archive header.');
+  }
+
+  const entries = Object.entries(loadedZip.files).filter(([, entry]) => !entry.dir);
+
+  // File count check
+  if (entries.length > ZIP_LIMITS.MAX_FILES) {
+    throw new Error(
+      `Archive contains ${entries.length} files, which exceeds the limit of ${ZIP_LIMITS.MAX_FILES} files.`
+    );
+  }
 
   const assets: Record<string, ProjectAsset> = {};
   const htmlFiles: string[] = [];
+  let totalUncompressedBytes = 0;
 
-  // 1. First pass: extract all files safely into memory
-  for (const [relativePath, zipEntry] of Object.entries(loadedZip.files)) {
-    if (zipEntry.dir) continue;
-
-    // Normalize path: replace backslashes, remove leading ./
+  // Safe extraction loop with cumulative uncompressed size checks
+  for (const [relativePath, zipEntry] of entries) {
+    // Normalize path
     const normalizedPath = relativePath.replace(/\\/g, '/').replace(/^\.\//, '');
 
-    // Skip OS junk files (e.g., __MACOSX, .DS_Store)
+    // Skip OS metadata junk
     if (normalizedPath.startsWith('__MACOSX') || normalizedPath.endsWith('.DS_Store')) {
       continue;
     }
 
+    // Path traversal check
     if (!isSafePath(normalizedPath)) {
       console.warn(`[Security] Skipped unsafe path in ZIP: ${normalizedPath}`);
       continue;
+    }
+
+    const uint8Data = await zipEntry.async('uint8array');
+    const entryBytes = uint8Data.byteLength;
+
+    // Single-file size check
+    if (entryBytes > ZIP_LIMITS.MAX_SINGLE_FILE_BYTES) {
+      throw new Error(
+        `File "${normalizedPath}" exceeds single-file limit (${(entryBytes / (1024 * 1024)).toFixed(1)} MB).`
+      );
+    }
+
+    totalUncompressedBytes += entryBytes;
+
+    // Total archive expansion check (Zip bomb protection)
+    if (totalUncompressedBytes > ZIP_LIMITS.MAX_TOTAL_UNCOMPRESSED_BYTES) {
+      // Clean up already created blobs
+      revokeProjectAssets(assets);
+      throw new Error(
+        `Total uncompressed size exceeds security threshold of ${ZIP_LIMITS.MAX_TOTAL_UNCOMPRESSED_BYTES / (1024 * 1024)} MB. Possible decompression bomb detected.`
+      );
     }
 
     const mime = getMimeType(normalizedPath);
     let blobUrl = '';
     let content: string | undefined = undefined;
 
-    if (mime.startsWith('text/') || mime === 'application/javascript' || mime === 'image/svg+xml' || mime === 'application/json') {
-      content = await zipEntry.async('string');
+    if (
+      mime.startsWith('text/') ||
+      mime === 'application/javascript' ||
+      mime === 'image/svg+xml' ||
+      mime === 'application/json'
+    ) {
+      const decoder = new TextDecoder();
+      content = decoder.decode(uint8Data);
       const blob = new Blob([content], { type: mime });
       blobUrl = URL.createObjectURL(blob);
     } else {
-      const blob = await zipEntry.async('blob');
+      const blob = new Blob([uint8Data.buffer as ArrayBuffer], { type: mime });
       blobUrl = URL.createObjectURL(blob);
     }
 
@@ -90,7 +148,7 @@ export async function processZipFile(file: File): Promise<ExtractedZipResult> {
       path: normalizedPath,
       name: normalizedPath.split('/').pop() || normalizedPath,
       type: mime,
-      size: (await zipEntry.async('uint8array')).byteLength,
+      size: entryBytes,
       blobUrl,
       content,
     };
@@ -101,16 +159,18 @@ export async function processZipFile(file: File): Promise<ExtractedZipResult> {
   }
 
   if (htmlFiles.length === 0) {
+    revokeProjectAssets(assets);
     throw new Error('No HTML entry file found in ZIP archive.');
   }
 
-  // 2. Select default entry point (prefer index.html or root-level HTML)
-  let defaultEntry = htmlFiles.find((f) => f.toLowerCase() === 'index.html' || f.toLowerCase().endsWith('/index.html'));
+  // Select default entry point (prefer index.html or root-level HTML)
+  let defaultEntry = htmlFiles.find(
+    (f) => f.toLowerCase() === 'index.html' || f.toLowerCase().endsWith('/index.html')
+  );
   if (!defaultEntry) {
     defaultEntry = htmlFiles[0];
   }
 
-  // 3. Inspect referenced assets in HTML and CSS to detect missing dependencies
   const missingAssets = detectMissingAssets(assets, defaultEntry);
 
   return {
@@ -119,6 +179,21 @@ export async function processZipFile(file: File): Promise<ExtractedZipResult> {
     defaultEntry,
     missingAssets,
   };
+}
+
+/**
+ * Revokes all Blob URLs associated with a project to prevent browser memory leaks.
+ */
+export function revokeProjectAssets(assets: Record<string, ProjectAsset>): void {
+  for (const asset of Object.values(assets)) {
+    if (asset.blobUrl && asset.blobUrl.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(asset.blobUrl);
+      } catch {
+        // Ignore revocation error
+      }
+    }
+  }
 }
 
 /**
@@ -133,9 +208,7 @@ export function rewriteHtmlWithAssets(
 
   const entryDir = entryPath.includes('/') ? entryPath.substring(0, entryPath.lastIndexOf('/') + 1) : '';
 
-  // Helper to resolve relative path from entryDir
   const resolvePath = (relative: string): string => {
-    // Strip leading ./
     let clean = relative.replace(/^\.\//, '');
     if (clean.startsWith('/')) clean = clean.substring(1);
 
@@ -146,9 +219,7 @@ export function rewriteHtmlWithAssets(
     return clean;
   };
 
-  // Replace src="..." and href="..." and background="..."
   rewritten = rewritten.replace(/\b(src|href|poster)\s*=\s*["']([^"']+)["']/gi, (match, attr, url) => {
-    // Ignore external URLs, data URLs, anchors, mailto, javascript
     if (/^(https?:|\/\/|data:|blob:|#|mailto:|javascript:)/i.test(url)) {
       return match;
     }
@@ -157,7 +228,6 @@ export function rewriteHtmlWithAssets(
     if (assets[resolved]) {
       return `${attr}="${assets[resolved].blobUrl}"`;
     }
-    // Also try basename match if nested folders differed
     const baseMatch = Object.keys(assets).find((k) => k.endsWith('/' + url) || k === url);
     if (baseMatch && assets[baseMatch]) {
       return `${attr}="${assets[baseMatch].blobUrl}"`;
@@ -166,7 +236,6 @@ export function rewriteHtmlWithAssets(
     return match;
   });
 
-  // Replace url(...) inside inline styles or <style> blocks
   rewritten = rewritten.replace(/url\(\s*["']?([^"')]+)["']?\s*\)/gi, (match, url) => {
     if (/^(https?:|\/\/|data:|blob:|#)/i.test(url)) {
       return match;
@@ -201,4 +270,3 @@ function detectMissingAssets(assets: Record<string, ProjectAsset>, entryHtmlPath
 
   return missing;
 }
-

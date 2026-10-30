@@ -4,7 +4,7 @@ import { ExportSettings, ExportProgress, ExportResult, AspectRatioType, Resoluti
 import { AudioSettings } from '@/types/audio';
 import { DecodedAudioData, decodeAudioFile } from '@/lib/audio/audioEngine';
 import { inspectProjectCode } from '@/lib/analyzer/codeAnalyzer';
-import { processZipFile, rewriteHtmlWithAssets } from '@/lib/zip/zipHandler';
+import { processZipFile, rewriteHtmlWithAssets, revokeProjectAssets } from '@/lib/zip/zipHandler';
 import { SAMPLE_TEMPLATES, SampleTemplate } from '@/lib/templates/sampleTemplates';
 import { detectBrowserCapabilities, BrowserCapabilities } from '@/lib/engine/capabilities';
 
@@ -147,6 +147,8 @@ export const useStudioStore = create<StudioState>((set, get) => {
     },
 
     loadTemplate: (templateId: string) => {
+      const { project } = get();
+      revokeProjectAssets(project.assets);
       const template = SAMPLE_TEMPLATES.find((t) => t.id === templateId) || SAMPLE_TEMPLATES[0];
       const inspection = inspectProjectCode({
         html: template.html,
@@ -181,6 +183,8 @@ export const useStudioStore = create<StudioState>((set, get) => {
     },
 
     loadHtmlFile: async (file: File) => {
+      const { project } = get();
+      revokeProjectAssets(project.assets);
       const text = await file.text();
       const inspection = inspectProjectCode({
         html: text,
@@ -214,6 +218,8 @@ export const useStudioStore = create<StudioState>((set, get) => {
     },
 
     loadZipArchive: async (file: File) => {
+      const { project } = get();
+      revokeProjectAssets(project.assets);
       const extracted = await processZipFile(file);
       const defaultEntryAsset = extracted.assets[extracted.defaultEntry];
       const htmlContent = defaultEntryAsset?.content || '';
@@ -485,7 +491,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
     reloadPreview: () => set((s) => ({ previewKey: s.previewKey + 1, currentTime: 0 })),
 
     startExport: async (captureCanvas: HTMLCanvasElement) => {
-      const { exportSettings, audioSettings, decodedAudio } = get();
+      const { project, exportSettings, audioSettings, decodedAudio } = get();
       const controller = new AbortController();
 
       set({
@@ -510,6 +516,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
           settings: exportSettings,
           audioSettings,
           rawAudioBuffer: decodedAudio?.buffer || null,
+          htmlContent: project.htmlContent,
           captureCanvas,
           onProgress: (progress) => {
             set({ exportProgress: progress });
@@ -567,4 +574,13 @@ export const useStudioStore = create<StudioState>((set, get) => {
     },
   };
 });
+
+// Expose store globally for automated rendering test harnesses & Playwright
+if (typeof window !== 'undefined') {
+  (window as unknown as { __STUDIO_STORE__: unknown }).__STUDIO_STORE__ = useStudioStore.getState();
+  useStudioStore.subscribe((state) => {
+    (window as unknown as { __STUDIO_STORE__: unknown }).__STUDIO_STORE__ = state;
+  });
+}
+
 
