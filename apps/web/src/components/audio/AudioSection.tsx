@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { useStudioStore } from '@/store/studioStore';
-import { AudioSourceMode } from '@/types/audio';
+import { AudioSourceMode } from '@html-motion-studio/shared';
 import {
   Music,
   Upload,

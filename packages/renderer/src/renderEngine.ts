@@ -2,7 +2,7 @@ import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 import { Muxer as WebmMuxer, ArrayBufferTarget as WebmArrayBufferTarget } from 'webm-muxer';
 import { ExportSettings, ExportProgress, ExportResult, AudioSettings } from '@html-motion-studio/shared';
 import { renderProcessedAudioBuffer } from './audioEngine';
-import { rasterizeHtmlSnippetToCanvas } from './domRasterizer';
+import { rasterizeTemplateToCanvas } from './domRasterizer';
 
 export interface RenderJobOptions {
   settings: ExportSettings;
@@ -12,6 +12,21 @@ export interface RenderJobOptions {
   captureCanvas: HTMLCanvasElement;
   onProgress: (progress: ExportProgress) => void;
   signal: AbortSignal;
+}
+
+/**
+ * Returns supported H.264 AVC codec string based on resolution macroblocks.
+ * Level 3.1 (0x1f) supports up to 720p. Level 4.0 (0x28) and Level 4.2 (0x2a) support 1080p.
+ */
+function getH264CodecString(width: number, height: number): string {
+  const pixels = width * height;
+  if (pixels > 1920 * 1080) {
+    return 'avc1.4d0033'; // Level 5.1 (Supports 1440p / 4K)
+  } else if (pixels > 1280 * 720) {
+    return 'avc1.420028'; // Level 4.0 (Supports 1080p)
+  } else {
+    return 'avc1.42001f'; // Level 3.1 (Supports 720p)
+  }
 }
 
 export async function runExportJob(options: RenderJobOptions): Promise<ExportResult> {
@@ -34,7 +49,7 @@ export async function runExportJob(options: RenderJobOptions): Promise<ExportRes
     try {
       return await exportWithWebCodecs(options, totalFrames, startTime);
     } catch (err: unknown) {
-      console.warn('[RenderEngine] WebCodecs pipeline failed or unhandled, falling back to MediaRecorder:', err);
+      console.warn('[RenderEngine] WebCodecs pipeline failed, falling back to MediaRecorder:', err);
       if (signal.aborted) {
         throw new Error('Export cancelled by user.');
       }
@@ -47,7 +62,7 @@ export async function runExportJob(options: RenderJobOptions): Promise<ExportRes
 
 /**
  * Strategy C: Frame-by-frame encoding via WebCodecs + MP4 Muxer / WebM Muxer
- * Includes backpressure flow control, queue monitoring, and AudioEncoder integration.
+ * High performance hardware encoding with backpressure flow control.
  */
 async function exportWithWebCodecs(
   options: RenderJobOptions,
@@ -64,7 +79,7 @@ async function exportWithWebCodecs(
     elapsedMs: 0,
     estimatedRemainingMs: 0,
     currentFps: 0,
-    message: 'Initializing WebCodecs VideoEncoder & MP4 container...',
+    message: 'Initializing hardware VideoEncoder & MP4 container...',
   });
 
   const isMp4 = settings.format === 'mp4';
@@ -143,7 +158,10 @@ async function exportWithWebCodecs(
     },
   });
 
-  const videoCodecString = isMp4 ? 'avc1.42001f' : 'vp09.00.10.08';
+  const videoCodecString = isMp4
+    ? getH264CodecString(settings.width, settings.height)
+    : 'vp09.00.10.08';
+
   encoder.configure({
     codec: videoCodecString,
     width: settings.width,
@@ -153,12 +171,9 @@ async function exportWithWebCodecs(
   });
 
   // Setup AudioEncoder if audio is active and AudioEncoder is available
-  let audioElementCount = 0;
-  let audioEncoder: AudioEncoder | null = null;
-
   if (audioConfig && processedAudioBuffer && 'AudioEncoder' in window) {
     try {
-      audioEncoder = new AudioEncoder({
+      const audioEncoder = new AudioEncoder({
         output: (chunk, meta) => {
           try {
             muxer.addAudioChunk(chunk, meta);
@@ -176,21 +191,32 @@ async function exportWithWebCodecs(
         bitrate: settings.audioBitrateKbps * 1000,
       });
 
-      // Encode audio buffer
+      const numChannels = processedAudioBuffer.numberOfChannels;
+      const ch0 = processedAudioBuffer.getChannelData(0);
+      let combinedAudioData: Float32Array;
+
+      if (numChannels === 2) {
+        const ch1 = processedAudioBuffer.getChannelData(1);
+        combinedAudioData = new Float32Array(ch0.length + ch1.length);
+        combinedAudioData.set(ch0, 0);
+        combinedAudioData.set(ch1, ch0.length);
+      } else {
+        combinedAudioData = ch0;
+      }
+
       const audioData = new AudioData({
         format: 'f32-planar',
         sampleRate: processedAudioBuffer.sampleRate,
         numberOfFrames: processedAudioBuffer.length,
-        numberOfChannels: processedAudioBuffer.numberOfChannels,
+        numberOfChannels: numChannels,
         timestamp: 0,
-        data: processedAudioBuffer.getChannelData(0),
+        data: combinedAudioData as unknown as BufferSource,
       });
 
       audioEncoder.encode(audioData);
       audioData.close();
       await audioEncoder.flush();
       audioEncoder.close();
-      audioElementCount++;
     } catch (e) {
       console.warn('[WebCodecs] AudioEncoder setup/flush failed:', e);
     }
@@ -204,39 +230,42 @@ async function exportWithWebCodecs(
     elapsedMs: 0,
     estimatedRemainingMs: 0,
     currentFps: 0,
-    message: 'Capturing and encoding video frames with backpressure management...',
+    message: 'Encoding animation frames with hardware acceleration...',
   });
-
-  // Check if canvas already has content or if we should rasterize the HTML snippet
-  if (htmlContent) {
-    await rasterizeHtmlSnippetToCanvas(htmlContent, captureCanvas, {
-      width: settings.width,
-      height: settings.height,
-    });
-  }
 
   const frameDurationMicros = Math.round(1_000_000 / settings.fps);
 
-  // Encode frames sequentially with backpressure flow control
+  // Encode frames sequentially with dynamic animation stepping and backpressure flow control
   for (let f = 0; f < totalFrames; f++) {
     if (signal.aborted) {
-      encoder.close();
+      if (encoder.state !== 'closed') encoder.close();
       throw new Error('Export cancelled by user.');
     }
 
     if (encoderError) {
-      encoder.close();
+      if (encoder.state !== 'closed') encoder.close();
       throw new Error(`VideoEncoder fatal error: ${(encoderError as Error).message || encoderError}`);
     }
 
-    // BACKPRESSURE FLOW CONTROL:
-    // If encoder internal queue is buffering too many frames, wait before feeding more
+    // Backpressure flow control
     while (encoder.encodeQueueSize > 4) {
       await new Promise((r) => setTimeout(r, 10));
       if (signal.aborted) {
-        encoder.close();
+        if (encoder.state !== 'closed') encoder.close();
         throw new Error('Export cancelled by user.');
       }
+    }
+
+    const currentTimestampSeconds = f / settings.fps;
+
+    // Render frame to canvas cleanly
+    if (htmlContent) {
+      await rasterizeTemplateToCanvas(htmlContent, captureCanvas, {
+        width: settings.width,
+        height: settings.height,
+        currentTimeSeconds: currentTimestampSeconds,
+        durationSeconds: settings.durationSeconds,
+      });
     }
 
     const timestampMicros = f * frameDurationMicros;
@@ -280,13 +309,15 @@ async function exportWithWebCodecs(
     totalFrames,
     percentage: 95,
     elapsedMs: Math.round(performance.now() - startTime),
-    estimatedRemainingMs: 300,
+    estimatedRemainingMs: 200,
     currentFps: settings.fps,
     message: 'Flushing encoder and finalizing container multiplexer...',
   });
 
   await encoder.flush();
-  encoder.close();
+  if (encoder.state !== 'closed') {
+    encoder.close();
+  }
 
   muxer.finalize();
   const buffer = (target as ArrayBufferTarget).buffer;
@@ -329,9 +360,11 @@ async function exportWithMediaRecorder(
 
   // Ensure canvas has initial render
   if (htmlContent) {
-    await rasterizeHtmlSnippetToCanvas(htmlContent, captureCanvas, {
+    await rasterizeTemplateToCanvas(htmlContent, captureCanvas, {
       width: settings.width,
       height: settings.height,
+      currentTimeSeconds: 0,
+      durationSeconds: settings.durationSeconds,
     });
   }
 

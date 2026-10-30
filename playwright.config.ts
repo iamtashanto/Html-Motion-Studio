@@ -28,7 +28,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx next start -p 3000',
+    command: 'pnpm --filter @html-motion-studio/web start -p 3000',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 30000,

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useStudioStore } from '@/store/studioStore';
-import { AspectRatioType, ResolutionPreset, FpsPreset, OutputFormat, DurationPolicy, QualityPreset } from '@/types/export';
+import { AspectRatioType, ResolutionPreset, FpsPreset, OutputFormat, DurationPolicy, QualityPreset } from '@html-motion-studio/shared';
 import {
   Sliders,
   Ratio,

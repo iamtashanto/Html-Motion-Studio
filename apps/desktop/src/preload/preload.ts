@@ -16,3 +16,4 @@ const desktopApi: DesktopApi = {
 };
 
 contextBridge.exposeInMainWorld('desktopApi', desktopApi);
+

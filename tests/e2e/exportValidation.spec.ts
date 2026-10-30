@@ -24,7 +24,7 @@ test.describe('HTML Motion Studio Web — Video Export E2E', () => {
     await expect(page.locator('text=Ready for export')).toBeVisible();
 
     // Trigger Convert CTA
-    const convertBtn = page.locator('button:has-text("Convert HTML to")');
+    const convertBtn = page.getByRole('button', { name: 'Convert HTML to MP4 Video', exact: true });
     await expect(convertBtn).toBeEnabled();
     await convertBtn.click();
 

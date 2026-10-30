@@ -592,6 +592,7 @@ export const useStudioStore = create<StudioState>((set, get) => {
 
 // Expose store globally for automated rendering test harnesses & Playwright
 if (typeof window !== 'undefined') {
+  (window as unknown as { useStudioStore: unknown }).useStudioStore = useStudioStore;
   (window as unknown as { __STUDIO_STORE__: unknown }).__STUDIO_STORE__ = useStudioStore.getState();
   useStudioStore.subscribe((state) => {
     (window as unknown as { __STUDIO_STORE__: unknown }).__STUDIO_STORE__ = state;

@@ -7,6 +7,7 @@ export const ZIP_LIMITS = {
   MAX_SINGLE_FILE_BYTES: 50 * 1024 * 1024, // 50 MB
   MAX_TOTAL_UNCOMPRESSED_BYTES: 100 * 1024 * 1024, // 100 MB
   MAX_COMPRESSION_RATIO: 100, // 100:1 ratio warning
+  MAX_DIRECTORY_DEPTH: 8, // Max folder nesting depth
 };
 
 // Mime types lookup
@@ -47,6 +48,8 @@ export function isSafePath(path: string): boolean {
   if (path.startsWith('/') || path.startsWith('\\')) return false;
   // Prevent null bytes
   if (path.includes('\0')) return false;
+  // Prevent excessive directory nesting
+  if (path.split('/').length > ZIP_LIMITS.MAX_DIRECTORY_DEPTH) return false;
   return true;
 }
 
