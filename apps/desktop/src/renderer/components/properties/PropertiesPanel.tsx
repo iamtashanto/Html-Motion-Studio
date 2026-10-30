@@ -29,16 +29,44 @@ export const PropertiesPanel: React.FC = () => {
     updateAudioSettings,
     startExport,
     isExporting,
+    rightPanelWidth,
+    rightPanelCollapsed,
+    toggleRightPanel,
   } = useDesktopStudioStore();
 
   const [activeTab, setActiveTab] = useState<'export' | 'audio' | 'strategy'>('export');
 
   const totalFrames = Math.round(exportSettings.durationSeconds * exportSettings.fps);
 
+  if (rightPanelCollapsed) {
+    return (
+      <aside className="w-11 bg-slate-950 border-l border-slate-800/80 flex flex-col items-center py-3 select-none text-xs shrink-0 z-10 justify-between">
+        <div className="flex flex-col items-center gap-3">
+          <button
+            onClick={toggleRightPanel}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition"
+            title="Expand Properties Panel (Ctrl/Cmd+Shift+B)"
+            aria-label="Expand Properties Panel"
+          >
+            <PanelRightOpen className="w-4 h-4 text-blue-400" />
+          </button>
+          <div className="w-6 h-px bg-slate-800" />
+          <div className="writing-vertical-lr rotate-180 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 py-2">
+            <Settings className="w-3 h-3 text-slate-400" />
+            <span>Inspector</span>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="w-80 bg-slate-950 border-l border-slate-800/80 flex flex-col h-[calc(100vh-3.5rem)] select-none text-xs">
+    <aside
+      style={{ width: `${rightPanelWidth}px` }}
+      className="bg-slate-950 border-l border-slate-800/80 flex flex-col h-full min-h-0 select-none text-xs shrink-0 overflow-hidden"
+    >
       {/* Tab Navigation Header */}
-      <div className="flex border-b border-slate-800/80 bg-slate-900/40 p-1.5 gap-1">
+      <div className="flex items-center border-b border-slate-800/80 bg-slate-900/40 p-1.5 gap-1">
         <button
           onClick={() => setActiveTab('export')}
           className={`flex-1 py-1.5 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition ${
@@ -60,7 +88,7 @@ export const PropertiesPanel: React.FC = () => {
           }`}
         >
           <Cpu className="w-3.5 h-3.5" />
-          <span>Strategy</span>
+          <span>Engine</span>
         </button>
 
         <button
@@ -73,6 +101,15 @@ export const PropertiesPanel: React.FC = () => {
         >
           <Music className="w-3.5 h-3.5" />
           <span>Audio</span>
+        </button>
+
+        <button
+          onClick={toggleRightPanel}
+          className="p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition ml-1"
+          title="Collapse Properties (Ctrl/Cmd+Shift+B)"
+          aria-label="Collapse Properties"
+        >
+          <PanelRightClose className="w-3.5 h-3.5" />
         </button>
       </div>
 

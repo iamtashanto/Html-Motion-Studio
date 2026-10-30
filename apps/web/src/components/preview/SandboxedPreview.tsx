@@ -184,34 +184,36 @@ export const SandboxedPreview: React.FC<SandboxedPreviewProps> = ({ captureCanva
       className="flex flex-col bg-slate-900/90 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden backdrop-blur-md"
     >
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/80 bg-slate-950/60">
-        <div className="flex items-center space-x-2">
-          <div className="flex space-x-1.5 mr-2">
-            <div className="w-3 h-3 rounded-full bg-red-500/80" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-            <div className="w-3 h-3 rounded-full bg-green-500/80" />
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between px-4 py-2.5 border-b border-slate-800/80 bg-slate-950/60 gap-2">
+        <div className="flex items-center space-x-2 min-w-0">
+          <div className="flex space-x-1.5 mr-1 shrink-0">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
           </div>
-          <span className="text-xs font-semibold text-slate-300 tracking-wide uppercase flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5 text-blue-400" />
-            Isolated Sandbox Preview
+          <span className="text-xs font-semibold text-slate-300 tracking-wide uppercase flex items-center gap-1.5 truncate">
+            <Eye className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+            Isolated Sandbox
           </span>
-          <span className="text-xs text-slate-500 px-2 py-0.5 rounded bg-slate-800 font-mono">
+          <span className="text-[10px] text-slate-500 px-2 py-0.5 rounded bg-slate-800 font-mono hidden sm:inline-block">
             {exportSettings.aspectRatio} • {exportSettings.width}×{exportSettings.height}
           </span>
         </div>
 
         {/* Scale & Fullscreen Controls */}
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center rounded-lg bg-slate-800/60 p-0.5 border border-slate-700/50 text-xs">
+        <div className="flex items-center space-x-1.5 shrink-0">
+          <div className="flex items-center rounded-lg bg-slate-800/60 p-0.5 border border-slate-700/50 text-[11px]">
             {(['fit', '50%', '75%', '100%'] as const).map((scale) => (
               <button
                 key={scale}
                 onClick={() => setPreviewScale(scale)}
-                className={`px-2 py-1 rounded-md capitalize font-medium transition-colors ${
+                className={`px-2 py-0.5 rounded-md capitalize font-medium transition-colors ${
                   previewScale === scale
                     ? 'bg-blue-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
+                title={`Scale preview to ${scale}`}
+                aria-label={`Scale preview to ${scale}`}
               >
                 {scale}
               </button>
@@ -221,9 +223,10 @@ export const SandboxedPreview: React.FC<SandboxedPreviewProps> = ({ captureCanva
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            aria-label="Toggle Fullscreen"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
@@ -278,37 +281,40 @@ export const SandboxedPreview: React.FC<SandboxedPreviewProps> = ({ captureCanva
       </div>
 
       {/* Transport & Timeline Controls */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-950 border-t border-slate-800/80">
+      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-slate-950 border-t border-slate-800/80 gap-2">
         <div className="flex items-center space-x-2">
           {/* Play/Pause Button */}
           <button
             onClick={togglePlay}
-            className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 transition active:scale-95"
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20 transition active:scale-95"
             title={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? 'Pause Animation' : 'Play Animation'}
           >
-            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+            {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current ml-0.5" />}
           </button>
 
           {/* Restart Button */}
           <button
             onClick={handleRestart}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
             title="Restart from beginning"
+            aria-label="Restart Animation"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
           {/* Reload Iframe */}
           <button
             onClick={reloadPreview}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
             title="Reload sandbox context"
+            aria-label="Reload sandbox context"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
 
           {/* Time Display */}
-          <div className="text-xs font-mono text-slate-400 ml-2">
+          <div className="text-xs font-mono text-slate-400 ml-1">
             <span className="text-blue-400 font-semibold">{currentTime.toFixed(1)}s</span>
             <span className="text-slate-600"> / </span>
             <span>{exportSettings.durationSeconds.toFixed(1)}s</span>
@@ -316,18 +322,18 @@ export const SandboxedPreview: React.FC<SandboxedPreviewProps> = ({ captureCanva
         </div>
 
         {/* Right Info: Status Pill */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1.5 text-xs">
+        <div className="flex items-center space-x-2 text-xs">
+          <div className="flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-slate-300 font-medium">
-              {isPlaying ? 'Live Preview Active' : 'Paused'}
+            <span className="text-slate-300 font-medium text-[11px]">
+              {isPlaying ? 'Live Active' : 'Paused'}
             </span>
           </div>
 
-          <div className="h-4 w-px bg-slate-800" />
+          <div className="h-3 w-px bg-slate-800" />
 
-          <span className="text-xs text-slate-500">
-            {exportSettings.fps} FPS Target
+          <span className="text-[11px] text-slate-500 font-mono">
+            {exportSettings.fps} FPS
           </span>
         </div>
       </div>

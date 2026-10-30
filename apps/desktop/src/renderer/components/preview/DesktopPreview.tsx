@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useDesktopStudioStore } from '../../store/desktopStudioStore';
 import {
   Play,
@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   Maximize2,
+  Minimize2,
   Sliders,
   Layers,
 } from 'lucide-react';
@@ -28,11 +29,25 @@ export const DesktopPreview: React.FC = () => {
     restart,
     setPreviewZoom,
     setPreviewBackground,
+    isResizing,
   } = useDesktopStudioStore();
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(performance.now());
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
+  };
 
   // Handle animation loop
   useEffect(() => {
@@ -115,7 +130,10 @@ export const DesktopPreview: React.FC = () => {
   }[previewZoom];
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-3.5rem)] bg-slate-900 overflow-hidden select-none">
+    <div
+      ref={containerRef}
+      className="flex-1 flex flex-col min-h-0 bg-slate-900 overflow-hidden select-none"
+    >
       {/* Top Preview Controls Bar */}
       <div className="h-10 bg-slate-950/80 border-b border-slate-800/80 px-4 flex items-center justify-between text-xs">
         {/* Aspect Ratio & Resolution Info */}
@@ -135,13 +153,14 @@ export const DesktopPreview: React.FC = () => {
         <div className="flex items-center gap-3">
           {/* Zoom options */}
           <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
-            {(['fit', '50%', '100%'] as const).map((z) => (
+            {(['fit', '50%', '75%', '100%'] as const).map((z) => (
               <button
                 key={z}
                 onClick={() => setPreviewZoom(z)}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
                   previewZoom === z ? 'bg-blue-600 text-white font-bold' : 'text-slate-400 hover:text-white'
                 }`}
+                title={`Zoom ${z === 'fit' ? 'Fit to Screen' : z}`}
               >
                 {z === 'fit' ? 'Fit' : z}
               </button>
@@ -152,26 +171,47 @@ export const DesktopPreview: React.FC = () => {
           <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
             <button
               onClick={() => setPreviewBackground('dark')}
-              className={`p-1 rounded ${previewBackground === 'dark' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}
-              title="Dark Studio"
+              className={`p-1 rounded ${previewBackground === 'dark' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              title="Dark Studio Background"
+              aria-label="Dark Studio Background"
             >
               <Moon className="w-3 h-3" />
             </button>
             <button
               onClick={() => setPreviewBackground('grid')}
-              className={`p-1 rounded ${previewBackground === 'grid' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}
-              title="Blueprint Grid"
+              className={`p-1 rounded ${previewBackground === 'grid' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              title="Blueprint Grid Background"
+              aria-label="Blueprint Grid Background"
             >
               <Grid className="w-3 h-3" />
             </button>
             <button
               onClick={() => setPreviewBackground('checker')}
-              className={`p-1 rounded ${previewBackground === 'checker' ? 'bg-slate-700 text-white' : 'text-slate-400'}`}
+              className={`p-1 rounded ${previewBackground === 'checker' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
               title="Transparency Checkerboard"
+              aria-label="Transparency Checkerboard"
             >
               <Layers className="w-3 h-3" />
             </button>
+            <button
+              onClick={() => setPreviewBackground('light')}
+              className={`p-1 rounded ${previewBackground === 'light' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+              title="Light Background"
+              aria-label="Light Background"
+            >
+              <Sun className="w-3 h-3" />
+            </button>
           </div>
+
+          {/* Fullscreen Toggle */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-1 rounded bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Stage'}
+            aria-label="Toggle Fullscreen Stage"
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
@@ -185,7 +225,7 @@ export const DesktopPreview: React.FC = () => {
             srcDoc={project.htmlContent}
             title="HTML Animation Preview"
             sandbox="allow-scripts"
-            className={`${zoomStyles} border-0 pointer-events-auto`}
+            className={`${zoomStyles} border-0 ${isResizing ? 'pointer-events-none' : 'pointer-events-auto'}`}
           />
         </div>
       </div>

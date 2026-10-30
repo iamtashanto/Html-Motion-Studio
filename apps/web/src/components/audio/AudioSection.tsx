@@ -56,9 +56,9 @@ export const AudioSection: React.FC = () => {
   return (
     <div className="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-md">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-800/80 bg-slate-950/60">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-slate-800/80 bg-slate-950/60 gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-purple-950/80 border border-purple-800/50 flex items-center justify-center text-purple-400">
+          <div className="w-8 h-8 rounded-xl bg-purple-950/80 border border-purple-800/50 flex items-center justify-center text-purple-400 shrink-0">
             <Music className="w-4 h-4" />
           </div>
           <div>
@@ -72,7 +72,7 @@ export const AudioSection: React.FC = () => {
         </div>
 
         {/* Source Mode Selector */}
-        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+        <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs overflow-x-auto scrollbar-none whitespace-nowrap">
           {(
             [
               { id: 'none', label: 'No Audio' },
@@ -84,7 +84,7 @@ export const AudioSection: React.FC = () => {
             <button
               key={mode.id}
               onClick={() => updateAudioSettings({ sourceMode: mode.id as AudioSourceMode })}
-              className={`px-2.5 py-1 rounded-lg font-medium transition ${
+              className={`px-2.5 py-1 rounded-lg font-medium transition shrink-0 ${
                 audioSettings.sourceMode === mode.id
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'

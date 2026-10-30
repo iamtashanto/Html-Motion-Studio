@@ -29,8 +29,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'pnpm --filter @html-motion-studio/web start -p 3000',
-    port: 3000,
-    reuseExistingServer: !process.env.CI,
+    url: 'http://localhost:3000',
+    reuseExistingServer: true,
     timeout: 30000,
   },
 });

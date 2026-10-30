@@ -55,7 +55,7 @@ export const CompatibilityReportCard: React.FC = () => {
   return (
     <div className="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-md">
       {/* Header bar */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-800/80 bg-slate-950/50">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between p-4 border-b border-slate-800/80 bg-slate-950/50 gap-2">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
             <Cpu className="w-4 h-4" />
@@ -89,7 +89,7 @@ export const CompatibilityReportCard: React.FC = () => {
       {/* Desktop Recommendation Alert Banner */}
       {(compatibility.overallStatus === 'desktop-recommended' ||
         compatibility.overallStatus === 'limited') && (
-        <div className="px-4 py-3 bg-gradient-to-r from-orange-950/40 to-amber-950/20 border-b border-orange-800/30 flex items-start justify-between gap-3">
+        <div className="px-4 py-3 bg-gradient-to-r from-orange-950/40 to-amber-950/20 border-b border-orange-800/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start gap-2.5">
             <ShieldAlert className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
             <div>

@@ -35,8 +35,8 @@ export const ExportResultModal: React.FC = () => {
       : `${(exportResult.sizeBytes / 1024).toFixed(1)} KB`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -84,7 +84,7 @@ export const ExportResultModal: React.FC = () => {
         </div>
 
         {/* Video Metadata Stats */}
-        <div className="grid grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs">
           <div>
             <div className="text-slate-500 flex items-center gap-1">
               <Film className="w-3 h-3 text-emerald-400" />

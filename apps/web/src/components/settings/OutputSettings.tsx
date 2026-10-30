@@ -78,7 +78,7 @@ export const OutputSettings: React.FC = () => {
             <Ratio className="w-3.5 h-3.5 text-blue-400" />
             Aspect Ratio
           </label>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {(
               [
                 { id: '16:9', label: '16:9', sub: 'Landscape' },
@@ -193,7 +193,7 @@ export const OutputSettings: React.FC = () => {
             <FileVideo className="w-3.5 h-3.5 text-blue-400" />
             Video Format Container
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => updateExportSettings({ format: 'mp4' })}
               className={`p-3 rounded-xl border text-left transition flex items-center justify-between ${
@@ -241,7 +241,7 @@ export const OutputSettings: React.FC = () => {
               <Clock className="w-3.5 h-3.5 text-blue-400" />
               Duration Policy
             </span>
-            <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800 text-xs">
+            <div className="flex flex-wrap sm:flex-nowrap bg-slate-900 rounded-lg p-0.5 border border-slate-800 text-xs">
               {(
                 [
                   { id: 'project', label: 'Animation' },
