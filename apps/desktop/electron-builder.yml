@@ -45,3 +45,4 @@ linux:
     - target: tar.gz
       arch:
         - x64
+

@@ -242,7 +242,7 @@ export class FFmpegPipeline {
         if (code === 0 && fs.existsSync(config.outputFilePath)) {
           resolve(config.outputFilePath);
         } else {
-          reject(new Error(`FFmpeg exited with code ${code}. Error log: ${stderrLog.slice(-500)}`));
+          reject(new Error(`FFmpeg exited with code ${code}. Full stderr:\n${stderrLog}`));
         }
       });
 

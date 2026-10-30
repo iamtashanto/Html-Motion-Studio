@@ -109,3 +109,4 @@ export const NewProjectModal: React.FC<NewProjectModalProps> = ({ isOpen, onClos
     </div>
   );
 };
+

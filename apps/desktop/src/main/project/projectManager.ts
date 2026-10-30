@@ -374,3 +374,4 @@ export class ProjectManager {
     return map[ext] || 'application/octet-stream';
   }
 }
+

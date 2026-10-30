@@ -1,0 +1,109 @@
+name: Desktop Application Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-desktop:
+    name: Build Desktop App (${{ matrix.os }} - ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            arch: arm64
+            target: mac
+          - os: macos-13
+            arch: x64
+            target: mac
+          - os: windows-latest
+            arch: x64
+            target: win
+          - os: ubuntu-latest
+            arch: x64
+            target: linux
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.4
+
+      - name: Setup FFmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: release
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Unit Tests
+        run: pnpm test
+
+      - name: Build Web & Desktop Apps
+        run: |
+          pnpm --filter @html-motion-studio/desktop run build
+
+      - name: Package Desktop Artifacts (macOS)
+        if: matrix.os == 'macos-latest' || matrix.os == 'macos-13'
+        run: |
+          pnpm --filter @html-motion-studio/desktop exec electron-builder --mac dmg zip --${{ matrix.arch }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package Desktop Artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pnpm --filter @html-motion-studio/desktop exec electron-builder --win nsis --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package Desktop Artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pnpm --filter @html-motion-studio/desktop exec electron-builder --linux AppImage tar.gz --x64
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SHA-256 Checksums
+        shell: bash
+        run: |
+          cd apps/desktop/release
+          for file in *.{dmg,zip,exe,AppImage,tar.gz}; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "$file.sha256" || shasum -a 256 "$file" > "$file.sha256"
+            fi
+          done
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.tar.gz
+            apps/desktop/release/*.sha256
+

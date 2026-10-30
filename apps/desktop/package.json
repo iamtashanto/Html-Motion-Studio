@@ -2,6 +2,8 @@
   "name": "@html-motion-studio/desktop",
   "version": "1.0.0",
   "description": "HTML Motion Studio Desktop — Professional Frame-Accurate Video Rendering Suite",
+  "author": "HTML Motion Studio Team",
+  "license": "MIT",
   "main": "./dist/apps/desktop/src/main/main.js",
   "scripts": {
     "build": "pnpm run build:renderer && pnpm run build:main",

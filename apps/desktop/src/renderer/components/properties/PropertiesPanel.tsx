@@ -11,6 +11,8 @@ import {
   Layers,
   Sparkles,
   Info,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
 
 export const PropertiesPanel: React.FC = () => {
@@ -337,3 +339,4 @@ export const PropertiesPanel: React.FC = () => {
     </aside>
   );
 };
+

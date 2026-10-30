@@ -43,6 +43,27 @@ export interface DesktopStudioState {
   exportResult: { outputFilePath: string; validation: FFprobeValidationResult } | null;
   exportError: string | null;
 
+  // Split-Pane Layout & Resizing
+  leftSidebarWidth: number;
+  leftSidebarCollapsed: boolean;
+  rightPanelWidth: number;
+  rightPanelCollapsed: boolean;
+  timelineHeight: number;
+  timelineCollapsed: boolean;
+  isResizing: boolean;
+
+  // Layout Actions
+  setLeftSidebarWidth: (width: number) => void;
+  toggleLeftSidebar: () => void;
+  resetLeftSidebarWidth: () => void;
+  setRightPanelWidth: (width: number) => void;
+  toggleRightPanel: () => void;
+  resetRightPanelWidth: () => void;
+  setTimelineHeight: (height: number) => void;
+  toggleTimeline: () => void;
+  resetTimelineHeight: () => void;
+  setIsResizing: (resizing: boolean) => void;
+
   // Actions
   initialize: () => Promise<void>;
   createProject: (title?: string, templateId?: string) => void;
@@ -144,7 +165,108 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
     exportResult: null,
     exportError: null,
 
+    // Layout default dimensions (px)
+    leftSidebarWidth: 260,
+    leftSidebarCollapsed: false,
+    rightPanelWidth: 320,
+    rightPanelCollapsed: false,
+    timelineHeight: 160,
+    timelineCollapsed: false,
+    isResizing: false,
+
+    setLeftSidebarWidth: (width: number) => {
+      const clamped = Math.max(180, Math.min(480, width));
+      set({ leftSidebarWidth: clamped });
+      try {
+        localStorage.setItem('hms_desktop_left_sidebar_width', clamped.toString());
+      } catch {}
+    },
+
+    toggleLeftSidebar: () => {
+      const next = !get().leftSidebarCollapsed;
+      set({ leftSidebarCollapsed: next });
+      try {
+        localStorage.setItem('hms_desktop_left_sidebar_collapsed', next.toString());
+      } catch {}
+    },
+
+    resetLeftSidebarWidth: () => {
+      set({ leftSidebarWidth: 260, leftSidebarCollapsed: false });
+      try {
+        localStorage.setItem('hms_desktop_left_sidebar_width', '260');
+        localStorage.setItem('hms_desktop_left_sidebar_collapsed', 'false');
+      } catch {}
+    },
+
+    setRightPanelWidth: (width: number) => {
+      const clamped = Math.max(240, Math.min(520, width));
+      set({ rightPanelWidth: clamped });
+      try {
+        localStorage.setItem('hms_desktop_right_panel_width', clamped.toString());
+      } catch {}
+    },
+
+    toggleRightPanel: () => {
+      const next = !get().rightPanelCollapsed;
+      set({ rightPanelCollapsed: next });
+      try {
+        localStorage.setItem('hms_desktop_right_panel_collapsed', next.toString());
+      } catch {}
+    },
+
+    resetRightPanelWidth: () => {
+      set({ rightPanelWidth: 320, rightPanelCollapsed: false });
+      try {
+        localStorage.setItem('hms_desktop_right_panel_width', '320');
+        localStorage.setItem('hms_desktop_right_panel_collapsed', 'false');
+      } catch {}
+    },
+
+    setTimelineHeight: (height: number) => {
+      const clamped = Math.max(100, Math.min(380, height));
+      set({ timelineHeight: clamped });
+      try {
+        localStorage.setItem('hms_desktop_timeline_height', clamped.toString());
+      } catch {}
+    },
+
+    toggleTimeline: () => {
+      const next = !get().timelineCollapsed;
+      set({ timelineCollapsed: next });
+      try {
+        localStorage.setItem('hms_desktop_timeline_collapsed', next.toString());
+      } catch {}
+    },
+
+    resetTimelineHeight: () => {
+      set({ timelineHeight: 160, timelineCollapsed: false });
+      try {
+        localStorage.setItem('hms_desktop_timeline_height', '160');
+        localStorage.setItem('hms_desktop_timeline_collapsed', 'false');
+      } catch {}
+    },
+
+    setIsResizing: (resizing: boolean) => set({ isResizing: resizing }),
+
     initialize: async () => {
+      // Restore layout preferences
+      try {
+        const savedLeft = localStorage.getItem('hms_desktop_left_sidebar_width');
+        const savedLeftCollapsed = localStorage.getItem('hms_desktop_left_sidebar_collapsed');
+        const savedRight = localStorage.getItem('hms_desktop_right_panel_width');
+        const savedRightCollapsed = localStorage.getItem('hms_desktop_right_panel_collapsed');
+        const savedTimeline = localStorage.getItem('hms_desktop_timeline_height');
+        const savedTimelineCollapsed = localStorage.getItem('hms_desktop_timeline_collapsed');
+
+        set({
+          ...(savedLeft ? { leftSidebarWidth: Math.max(180, Math.min(480, parseInt(savedLeft, 10))) } : {}),
+          ...(savedLeftCollapsed ? { leftSidebarCollapsed: savedLeftCollapsed === 'true' } : {}),
+          ...(savedRight ? { rightPanelWidth: Math.max(240, Math.min(520, parseInt(savedRight, 10))) } : {}),
+          ...(savedRightCollapsed ? { rightPanelCollapsed: savedRightCollapsed === 'true' } : {}),
+          ...(savedTimeline ? { timelineHeight: Math.max(100, Math.min(380, parseInt(savedTimeline, 10))) } : {}),
+          ...(savedTimelineCollapsed ? { timelineCollapsed: savedTimelineCollapsed === 'true' } : {}),
+        });
+      } catch {}
       if (typeof window !== 'undefined' && window.desktopApi) {
         try {
           const caps = await window.desktopApi.getSystemCapabilities();
@@ -474,3 +596,4 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
     },
   };
 });
+

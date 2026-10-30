@@ -24,7 +24,16 @@ test('FFmpegPipeline: Encodes frame sequence into verified MP4 video with FFprob
   const framesDir = path.join(tempDir, 'frames');
   fs.mkdirSync(framesDir, { recursive: true });
 
-  const pngBuffer = Buffer.from(MINIMAL_PNG_BASE64, 'base64');
+  const pipeline = new FFmpegPipeline();
+  const ffmpegBin = pipeline.resolveBinary('ffmpeg');
+
+  // Generate 1 reference PNG frame using FFmpeg's own lavfi generator
+  const refFramePath = path.join(tempDir, 'ref_frame.png');
+  execSync(`"${ffmpegBin}" -y -f lavfi -i color=c=blue:s=640x360:d=1 -frames:v 1 -update 1 "${refFramePath}"`, {
+    stdio: 'ignore',
+  });
+  const pngBuffer = fs.readFileSync(refFramePath);
+
   const fps = 30;
   const durationSec = 1;
   const totalFrames = fps * durationSec;
@@ -38,7 +47,7 @@ test('FFmpegPipeline: Encodes frame sequence into verified MP4 video with FFprob
   // Synthesize a 1-second test audio file using ffmpeg
   const audioPath = path.join(tempDir, 'test_audio.mp3');
   try {
-    execSync(`ffmpeg -y -f lavfi -i sine=frequency=440:duration=1.0 -c:a libmp3lame "${audioPath}"`, {
+    execSync(`"${ffmpegBin}" -y -f lavfi -i sine=frequency=440:duration=1.0 -c:a libmp3lame "${audioPath}"`, {
       stdio: 'ignore',
     });
   } catch {
@@ -47,61 +56,65 @@ test('FFmpegPipeline: Encodes frame sequence into verified MP4 video with FFprob
 
   const outVideoPath = path.join(tempDir, 'output_test.mp4');
 
-  const pipeline = new FFmpegPipeline();
-  const encodedPath = await pipeline.encodeFrames(
-    {
-      jobId: 'test-job',
-      project: { id: 'test', title: 'Test', mode: 'code', htmlContent: '', entryHtmlPath: '', availableHtmlFiles: [], assets: {}, missingAssets: [] },
-      settings: {
-        aspectRatio: '16:9',
-        width: 640,
-        height: 360,
-        resolution: '720p',
-        fps: 30,
-        format: 'mp4',
-        quality: 'high',
-        videoBitrateMbps: 2,
-        audioBitrateKbps: 128,
-        durationPolicy: 'project',
-        durationSeconds: 1,
-        loopAnimationIfShorter: true,
-        filename: 'output_test',
-        engineStrategy: 'auto',
+  try {
+    const encodedPath = await pipeline.encodeFrames(
+      {
+        jobId: 'test-job',
+        project: { id: 'test', title: 'Test', mode: 'code', htmlContent: '', entryHtmlPath: '', availableHtmlFiles: [], assets: {}, missingAssets: [] },
+        settings: {
+          aspectRatio: '16:9',
+          width: 640,
+          height: 360,
+          resolution: '720p',
+          fps: 30,
+          format: 'mp4',
+          quality: 'high',
+          videoBitrateMbps: 2,
+          audioBitrateKbps: 128,
+          durationPolicy: 'project',
+          durationSeconds: 1,
+          loopAnimationIfShorter: true,
+          filename: 'output_test',
+          engineStrategy: 'auto',
+        },
+        audioSettings: {
+          sourceMode: fs.existsSync(audioPath) ? 'external' : 'none',
+          durationSeconds: 1,
+          volume: 1.0,
+          startOffsetSeconds: 0,
+          trimInSeconds: 0,
+          trimOutSeconds: 1,
+          fadeInSeconds: 0.1,
+          fadeOutSeconds: 0.1,
+        },
+        audioFilePath: fs.existsSync(audioPath) ? audioPath : undefined,
+        outputFilePath: outVideoPath,
+        strategy: 'compatibility',
       },
-      audioSettings: {
-        sourceMode: fs.existsSync(audioPath) ? 'external' : 'none',
-        durationSeconds: 1,
-        volume: 1.0,
-        startOffsetSeconds: 0,
-        trimInSeconds: 0,
-        trimOutSeconds: 1,
-        fadeInSeconds: 0.1,
-        fadeOutSeconds: 0.1,
-      },
-      audioFilePath: fs.existsSync(audioPath) ? audioPath : undefined,
-      outputFilePath: outVideoPath,
-      strategy: 'compatibility',
-    },
-    framesDir,
-    () => {}
-  );
+      framesDir,
+      () => {}
+    );
 
-  assert.equal(fs.existsSync(encodedPath), true);
-  assert.equal(fs.statSync(encodedPath).size > 1000, true);
+    assert.equal(fs.existsSync(encodedPath), true);
+    assert.equal(fs.statSync(encodedPath).size > 1000, true);
 
-  // Validate with FFprobe
-  const probe = pipeline.verifyVideo(encodedPath);
-  assert.equal(probe.valid, true);
-  assert.match(probe.formatName, /mp4|mov/);
-  assert.equal(probe.video?.codec, 'h264');
-  assert.equal(probe.video?.width, 640);
-  assert.equal(probe.video?.height, 360);
-  assert.equal(probe.video?.fps, 30);
-  assert.equal(Math.round(probe.durationSeconds), 1);
+    // Validate with FFprobe
+    const probe = pipeline.verifyVideo(encodedPath);
+    assert.equal(probe.valid, true);
+    assert.match(probe.formatName, /mp4|mov/);
+    assert.equal(probe.video?.codec, 'h264');
+    assert.equal(probe.video?.width, 640);
+    assert.equal(probe.video?.height, 360);
+    assert.equal(probe.video?.fps, 30);
+    assert.equal(Math.round(probe.durationSeconds), 1);
 
-  if (fs.existsSync(audioPath)) {
-    assert.equal(probe.audio !== null, true);
-    assert.equal(probe.audio?.codec, 'aac');
+    if (fs.existsSync(audioPath)) {
+      assert.equal(probe.audio !== null, true);
+      assert.equal(probe.audio?.codec, 'aac');
+    }
+  } catch (err) {
+    console.error('FULL ERROR FROM PIPELINE:', err);
+    throw err;
   }
 
   fs.rmSync(tempDir, { recursive: true, force: true });

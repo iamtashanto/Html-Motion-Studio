@@ -104,3 +104,4 @@ test('SQLite Desktop Project Database: Records export history and persists to di
 
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
+

@@ -12,6 +12,9 @@ import {
   AlertTriangle,
   Plus,
   CheckCircle2,
+  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 export const AssetsSidebar: React.FC = () => {
@@ -22,6 +25,9 @@ export const AssetsSidebar: React.FC = () => {
     audioFilePath,
     audioSettings,
     clearAudio,
+    leftSidebarWidth,
+    leftSidebarCollapsed,
+    toggleLeftSidebar,
   } = useDesktopStudioStore();
 
   const [expandedSections, setExpandedSections] = useState({
@@ -42,17 +48,52 @@ export const AssetsSidebar: React.FC = () => {
   const imgAssets = assets.filter((a) => a.type.startsWith('image/'));
   const fontAssets = assets.filter((a) => a.type.startsWith('font/'));
 
+  if (leftSidebarCollapsed) {
+    return (
+      <aside className="w-11 bg-slate-950 border-r border-slate-800/80 flex flex-col items-center py-3 select-none text-xs shrink-0 z-10 justify-between">
+        <div className="flex flex-col items-center gap-3">
+          <button
+            onClick={toggleLeftSidebar}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition"
+            title="Expand Assets Sidebar (Ctrl/Cmd+B)"
+            aria-label="Expand Assets Sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-blue-400" />
+          </button>
+          <div className="w-6 h-px bg-slate-800" />
+          <div className="writing-vertical-lr rotate-180 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 py-2">
+            <Folder className="w-3 h-3 text-slate-400" />
+            <span>Assets ({assets.length})</span>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="w-64 bg-slate-950 border-r border-slate-800/80 flex flex-col h-[calc(100vh-3.5rem)] select-none text-xs">
+    <aside
+      style={{ width: `${leftSidebarWidth}px` }}
+      className="bg-slate-950 border-r border-slate-800/80 flex flex-col h-full min-h-0 select-none text-xs shrink-0 overflow-hidden"
+    >
       {/* Sidebar Header */}
-      <div className="p-3 border-b border-slate-800/80 flex items-center justify-between">
+      <div className="p-3 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/90">
         <div className="flex items-center gap-2">
           <Folder className="w-4 h-4 text-blue-400" />
           <span className="font-bold text-slate-200">Project Assets</span>
         </div>
-        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
-          {assets.length} file{assets.length !== 1 ? 's' : ''}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
+            {assets.length} file{assets.length !== 1 ? 's' : ''}
+          </span>
+          <button
+            onClick={toggleLeftSidebar}
+            className="p-1 rounded text-slate-500 hover:text-white hover:bg-slate-800 transition"
+            title="Collapse Assets Sidebar (Ctrl/Cmd+B)"
+            aria-label="Collapse Assets Sidebar"
+          >
+            <PanelLeftClose className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
 
       {/* Asset Categories Tree */}
@@ -240,3 +281,4 @@ export const AssetsSidebar: React.FC = () => {
     </aside>
   );
 };
+

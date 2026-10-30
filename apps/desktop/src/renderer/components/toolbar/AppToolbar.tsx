@@ -15,6 +15,9 @@ import {
   Download,
   ShieldCheck,
   FolderKanban,
+  PanelLeft,
+  PanelBottom,
+  PanelRight,
 } from 'lucide-react';
 
 interface AppToolbarProps {
@@ -35,6 +38,12 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
     setProjectTitle,
     startExport,
     isExporting,
+    leftSidebarCollapsed,
+    toggleLeftSidebar,
+    rightPanelCollapsed,
+    toggleRightPanel,
+    timelineCollapsed,
+    toggleTimeline,
   } = useDesktopStudioStore();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -217,8 +226,42 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
         </span>
       </div>
 
-      {/* Right: Engine Capability Badge & Export CTA */}
+      {/* Right: Panel Toggles, Engine Capability Badge & Export CTA */}
       <div className="flex items-center gap-3">
+        {/* Workspace Panel Toggles */}
+        <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+          <button
+            onClick={toggleLeftSidebar}
+            className={`p-1.5 rounded transition ${
+              !leftSidebarCollapsed ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'
+            }`}
+            title="Toggle Assets Sidebar (Ctrl/Cmd+B)"
+            aria-label="Toggle Assets Sidebar"
+          >
+            <PanelLeft className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={toggleTimeline}
+            className={`p-1.5 rounded transition ${
+              !timelineCollapsed ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'
+            }`}
+            title="Toggle Timeline (T / Ctrl+J)"
+            aria-label="Toggle Timeline"
+          >
+            <PanelBottom className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={toggleRightPanel}
+            className={`p-1.5 rounded transition ${
+              !rightPanelCollapsed ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'
+            }`}
+            title="Toggle Properties Panel (Ctrl/Cmd+Shift+B)"
+            aria-label="Toggle Properties Panel"
+          >
+            <PanelRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
         {/* System Capabilities Pill */}
         <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
           <Cpu className="w-3.5 h-3.5 text-indigo-400" />
@@ -242,3 +285,4 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
     </header>
   );
 };
+
