@@ -11,7 +11,11 @@
     "build:renderer": "vite build",
     "dev": "tsc -p tsconfig.main.json && electron .",
     "dev:renderer": "vite",
-    "package": "electron-builder"
+    "package": "electron-builder --publish never",
+    "package:mac": "electron-builder --mac --publish never",
+    "package:win": "electron-builder --win --x64 --publish never",
+    "package:linux": "electron-builder --linux --x64 --publish never",
+    "package:all": "electron-builder -mwl --publish never"
   },
   "dependencies": {
     "@html-motion-studio/renderer": "workspace:*",

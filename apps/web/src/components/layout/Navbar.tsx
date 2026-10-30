@@ -46,12 +46,23 @@ export const Navbar: React.FC = () => {
             Guide & FAQ
           </Link>
 
-          <a
-            href="#desktop-download"
+          <Link
+            href="/download"
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700/80 text-xs font-semibold text-slate-200 transition shadow-sm"
           >
             <DownloadCloud className="w-3.5 h-3.5 text-blue-400" />
             <span className="hidden sm:inline">Desktop App</span>
+          </Link>
+
+          <a
+            href="https://tashanto.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition"
+            title="Developed by TA Shanto"
+          >
+            <span className="text-[10px] text-slate-500">by</span>
+            <span className="text-blue-400 font-bold hover:underline">TA Shanto</span>
           </a>
 
           <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-[11px] font-medium">

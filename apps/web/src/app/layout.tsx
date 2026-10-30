@@ -106,14 +106,37 @@ export default function RootLayout({
         </main>
         <footer className="border-t border-slate-800/80 bg-slate-950/80 py-8 text-center text-xs text-slate-500">
           <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p>© {new Date().getFullYear()} HTML Motion Studio. All processing performed locally in your browser.</p>
+            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
+              <p>© {new Date().getFullYear()} HTML Motion Studio. All processing performed locally in your browser.</p>
+              <span className="hidden sm:inline text-slate-700">•</span>
+              <p className="text-slate-400">
+                Developed by{' '}
+                <a
+                  href="https://tashanto.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-blue-400 hover:text-blue-300 hover:underline transition"
+                >
+                  TA Shanto
+                </a>
+              </p>
+            </div>
             <div className="flex items-center space-x-4">
               <a href="/tools/html-to-mp4" className="hover:text-slate-300 transition">
                 HTML to MP4 Converter
               </a>
               <span className="text-slate-700">•</span>
-              <a href="#desktop-download" className="hover:text-slate-300 transition">
+              <a href="/download" className="hover:text-slate-300 transition">
                 Desktop App
+              </a>
+              <span className="text-slate-700">•</span>
+              <a
+                href="https://tashanto.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 hover:text-blue-400 font-semibold transition"
+              >
+                tashanto.com
               </a>
             </div>
           </div>

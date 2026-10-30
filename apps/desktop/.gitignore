@@ -61,6 +61,14 @@ web_modules/
 
 # Output of 'npm pack'
 *.tgz
+release/
+dist/
+build/Release/
+win-unpacked/
+linux-unpacked/
+mac/
+mac-arm64/
+*.blockmap
 
 # Yarn Integrity file
 .yarn-integrity

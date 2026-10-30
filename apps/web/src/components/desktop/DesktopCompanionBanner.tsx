@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import {
   DownloadCloud,
   Monitor,
@@ -12,6 +13,8 @@ import {
   Layers,
   Cpu,
   ArrowRight,
+  Apple,
+  Terminal,
 } from 'lucide-react';
 
 export const DesktopCompanionBanner: React.FC = () => {
@@ -34,27 +37,59 @@ export const DesktopCompanionBanner: React.FC = () => {
           </h2>
 
           <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-            <strong>HTML Motion Studio Web</strong> is built for instant browser conversions. For long animations, 4K/60fps master exports, complex WebGL/Three.js scenes, and alpha transparency, download <strong>HTML Motion Studio Desktop</strong> for macOS and Windows.
+            <strong>HTML Motion Studio Web</strong> is built for instant browser conversions. For long animations, 4K/60fps master exports, complex WebGL/Three.js scenes, and alpha transparency, download <strong>HTML Motion Studio Desktop</strong> for macOS, Windows, and Linux.
           </p>
 
-          <div className="flex flex-wrap items-center gap-4 pt-2">
-            <a
-              href="https://htmlmotionstudio.tashanto.com/download"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/25 transition active:scale-95"
-            >
-              <DownloadCloud className="w-4 h-4" />
-              Download Desktop App
-              <ArrowRight className="w-3.5 h-3.5 ml-1" />
-            </a>
+          {/* Direct Download Action Row */}
+          <div className="pt-2 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href="/downloads/HTML-Motion-Studio-Setup-1.0.0.exe"
+                download="HTML-Motion-Studio-Setup-1.0.0.exe"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/25 transition active:scale-95"
+                title="Download Windows x64 Installer (.exe) - 92 MB"
+              >
+                <Monitor className="w-4 h-4 text-cyan-300" />
+                <span>Windows (.exe)</span>
+              </a>
 
-            <button
-              onClick={() => setShowMatrix(!showMatrix)}
-              className="text-xs text-blue-400 hover:text-blue-300 font-semibold underline underline-offset-4"
-            >
-              {showMatrix ? 'Hide Feature Comparison' : 'Compare Web vs. Desktop Editions'}
-            </button>
+              <a
+                href="/downloads/HTML-Motion-Studio-1.0.0-arm64.dmg"
+                download="HTML-Motion-Studio-1.0.0-arm64.dmg"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs rounded-xl transition active:scale-95 shadow-md"
+                title="Download macOS Apple Silicon DMG - 112 MB"
+              >
+                <Apple className="w-4 h-4 text-slate-200" />
+                <span>macOS (.dmg)</span>
+              </a>
+
+              <a
+                href="/downloads/HTML-Motion-Studio-1.0.0.AppImage"
+                download="HTML-Motion-Studio-1.0.0.AppImage"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs rounded-xl transition active:scale-95 shadow-md"
+                title="Download Linux x64 Standalone AppImage - 121 MB"
+              >
+                <Terminal className="w-4 h-4 text-emerald-400" />
+                <span>Linux (.AppImage)</span>
+              </a>
+
+              <Link
+                href="/download"
+                className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-semibold px-3 py-2 rounded-lg hover:bg-blue-950/40 transition"
+              >
+                <span>All Downloads & Intel Macs</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div>
+              <button
+                onClick={() => setShowMatrix(!showMatrix)}
+                className="text-xs text-slate-400 hover:text-slate-200 font-semibold underline underline-offset-4"
+              >
+                {showMatrix ? 'Hide Feature Comparison' : 'Compare Web vs. Desktop Editions'}
+              </button>
+            </div>
           </div>
         </div>
 
