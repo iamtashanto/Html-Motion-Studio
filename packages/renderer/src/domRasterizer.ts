@@ -26,12 +26,10 @@ export async function rasterizeTemplateToCanvas(
     const svgMatch = htmlContent.match(/<svg[\s\S]*?<\/svg>/i);
     if (svgMatch) {
       let svgMarkup = svgMatch[0];
-      // Ensure width and height attributes exist
       if (!svgMarkup.includes('width=')) {
         svgMarkup = svgMarkup.replace('<svg', `<svg width="${width}" height="${height}"`);
       }
 
-      // Draw background
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);
 
@@ -39,7 +37,7 @@ export async function rasterizeTemplateToCanvas(
       const url = URL.createObjectURL(blob);
       const img = new Image();
 
-      return new Promise<boolean>((resolve) => {
+      const ok = await new Promise<boolean>((resolve) => {
         img.onload = () => {
           ctx.drawImage(img, 0, 0, width, height);
           URL.revokeObjectURL(url);
@@ -51,6 +49,8 @@ export async function rasterizeTemplateToCanvas(
         };
         img.src = url;
       });
+
+      if (ok) return true;
     }
   }
 
@@ -58,11 +58,10 @@ export async function rasterizeTemplateToCanvas(
   if (htmlContent.includes('getContext') || htmlContent.includes('<canvas')) {
     const t = currentTimeSeconds;
 
-    // Draw dark background
     ctx.fillStyle = '#020617';
     ctx.fillRect(0, 0, width, height);
 
-    // If particle simulation (Template 6)
+    // Particle simulation
     if (htmlContent.includes('particles') || htmlContent.includes('particle')) {
       const numParticles = 80;
       for (let i = 0; i < numParticles; i++) {
@@ -81,7 +80,7 @@ export async function rasterizeTemplateToCanvas(
       return true;
     }
 
-    // If wave oscillation (Template 4)
+    // Wave oscillation
     if (htmlContent.includes('draw') && htmlContent.includes('Math.sin')) {
       const points = 60;
       for (let i = 0; i < points; i++) {
@@ -101,12 +100,11 @@ export async function rasterizeTemplateToCanvas(
       return true;
     }
 
-    // If WebGL Scene (Template 12)
+    // WebGL Scene Simulation
     if (htmlContent.includes('webgl')) {
       ctx.fillStyle = '#0f172a';
       ctx.fillRect(0, 0, width, height);
 
-      // Render 3D cube simulation
       const size = 180 + Math.sin(t * 2) * 20;
       ctx.save();
       ctx.translate(width / 2, height / 2);
@@ -118,7 +116,6 @@ export async function rasterizeTemplateToCanvas(
       ctx.fillRect(-size / 2, -size / 2, size, size);
       ctx.restore();
 
-      // Desktop recommendation text
       ctx.fillStyle = '#facc15';
       ctx.font = 'bold 24px system-ui, sans-serif';
       ctx.textAlign = 'center';
@@ -127,7 +124,7 @@ export async function rasterizeTemplateToCanvas(
     }
   }
 
-  // 3. Audio Equalizer (Template 10)
+  // 3. Audio Equalizer
   if (htmlContent.includes('eq-bar') || htmlContent.includes('Audio Visualizer')) {
     ctx.fillStyle = '#030712';
     ctx.fillRect(0, 0, width, height);
@@ -163,54 +160,14 @@ export async function rasterizeTemplateToCanvas(
     return true;
   }
 
-  // 4. CSS Keyframes Motion (Template 2)
-  if (htmlContent.includes('orb') || htmlContent.includes('CSS Keyframe')) {
-    ctx.fillStyle = '#090d16';
-    ctx.fillRect(0, 0, width, height);
-
-    const t = currentTimeSeconds;
-    const scale = 1.0 + Math.sin(t * 3) * 0.15;
-    const rot = t * 1.2;
-
-    // Glowing orb
-    const grad = ctx.createRadialGradient(
-      width / 2, height / 2 - 40, 10,
-      width / 2, height / 2 - 40, 100 * scale
-    );
-    grad.addColorStop(0, '#38bdf8');
-    grad.addColorStop(0.5, '#3b82f6');
-    grad.addColorStop(1, '#6366f1');
-
-    ctx.beginPath();
-    ctx.arc(width / 2, height / 2 - 40, 80 * scale, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.shadowColor = 'rgba(56, 189, 248, 0.6)';
-    ctx.shadowBlur = 40;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // Rotating dashed ring
-    ctx.save();
-    ctx.translate(width / 2, height / 2 - 40);
-    ctx.rotate(rot);
-    ctx.beginPath();
-    ctx.arc(0, 0, 110, 0, Math.PI * 2);
-    ctx.setLineDash([12, 12]);
-    ctx.strokeStyle = 'rgba(165, 180, 252, 0.5)';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-    ctx.restore();
-
-    // Title text
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 36px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Smooth CSS Keyframes', width / 2, height / 2 + 120);
-
+  // 4. Real User HTML/CSS ForeignObject Rasterization
+  // Accurately renders arbitrary user HTML animations, CSS keyframes, typography, and styling
+  const foreignObjectRendered = await rasterizeForeignObjectHtml(htmlContent, canvas, options);
+  if (foreignObjectRendered) {
     return true;
   }
 
-  // 5. CSS Transitions (Template 3)
+  // 5. CSS Transitions
   if (htmlContent.includes('active-') || htmlContent.includes('Transitions Automated')) {
     ctx.fillStyle = '#111827';
     ctx.fillRect(0, 0, width, height);
@@ -235,13 +192,11 @@ export async function rasterizeTemplateToCanvas(
       const x = startX + idx * (barW + gap);
       const y = baseY - currentH;
 
-      // Container background
       ctx.fillStyle = '#1f2937';
       ctx.beginPath();
       ctx.roundRect(x, baseY - 280, barW, 280, 12);
       ctx.fill();
 
-      // Filling bar
       ctx.fillStyle = b.color;
       ctx.beginPath();
       ctx.roundRect(x, y, barW, currentH, 12);
@@ -256,7 +211,7 @@ export async function rasterizeTemplateToCanvas(
     return true;
   }
 
-  // 6. 15-Second / Long-Running Animation (Template 11)
+  // 6. 15-Second Continuous Motion
   if (htmlContent.includes('15s') || htmlContent.includes('fillBar') || htmlContent.includes('Continuous Motion')) {
     ctx.fillStyle = '#0f172a';
     ctx.fillRect(0, 0, width, height);
@@ -267,19 +222,16 @@ export async function rasterizeTemplateToCanvas(
     const trackX = (width - trackWidth) / 2;
     const trackY = height / 2;
 
-    // Title
     ctx.fillStyle = 'white';
     ctx.font = 'bold 36px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('15-Second Continuous Motion', width / 2, height / 2 - 60);
 
-    // Track
     ctx.fillStyle = '#1e293b';
     ctx.beginPath();
     ctx.roundRect(trackX, trackY, trackWidth, trackHeight, 12);
     ctx.fill();
 
-    // Progress
     const fillWidth = Math.max(12, trackWidth * progress);
     const grad = ctx.createLinearGradient(trackX, trackY, trackX + fillWidth, trackY);
     grad.addColorStop(0, '#6366f1');
@@ -290,7 +242,6 @@ export async function rasterizeTemplateToCanvas(
     ctx.roundRect(trackX, trackY, fillWidth, trackHeight, 12);
     ctx.fill();
 
-    // Timer label
     ctx.fillStyle = '#94a3b8';
     ctx.font = 'bold 20px monospace';
     ctx.fillText(
@@ -302,34 +253,97 @@ export async function rasterizeTemplateToCanvas(
     return true;
   }
 
-  // 7. General Clean Fallback / Static Banner (Template 1 & other text layouts)
-  // Background gradient
+  // 7. General Clean Fallback
   const bgGrad = ctx.createLinearGradient(0, 0, width, height);
   bgGrad.addColorStop(0, '#0f172a');
   bgGrad.addColorStop(1, '#1e1b4b');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // Badge
-  const badgeText = 'HTML MOTION STUDIO';
-  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.font = 'bold 36px system-ui, sans-serif';
+  ctx.fillStyle = 'white';
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#6366f1';
-  ctx.beginPath();
-  ctx.roundRect(width / 2 - 120, height / 2 - 110, 240, 36, 18);
-  ctx.fill();
-  ctx.fillStyle = 'white';
-  ctx.fillText(badgeText, width / 2, height / 2 - 86);
-
-  // Main Heading
-  ctx.font = 'bold 54px system-ui, sans-serif';
-  ctx.fillStyle = 'white';
-  ctx.fillText('HTML Animation Video', width / 2, height / 2 - 10);
-
-  // Subtitle
-  ctx.font = '22px system-ui, sans-serif';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText('Client-side frame-by-frame encoding with WebCodecs', width / 2, height / 2 + 50);
+  ctx.fillText('HTML Motion Graphic', width / 2, height / 2);
 
   return true;
+}
+
+/**
+ * High-Fidelity SVG ForeignObject DOM-to-Canvas Rasterizer.
+ * Accurately extracts the user's HTML, CSS stylesheets, images, and freezes CSS animations
+ * at the exact currentTimeSeconds so that generated video frames match the actual user design.
+ */
+async function rasterizeForeignObjectHtml(
+  htmlContent: string,
+  canvas: HTMLCanvasElement,
+  options: RasterizeOptions
+): Promise<boolean> {
+  const { width, height, currentTimeSeconds, backgroundColor = '#090d16' } = options;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return false;
+
+  let cleanHtml = htmlContent;
+
+  // Extract embedded CSS styles
+  let styles = '';
+  const styleMatches = cleanHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+  if (styleMatches) {
+    styles = styleMatches.join('\n');
+  }
+
+  // Extract body content or clean HTML
+  let bodyContent = cleanHtml;
+  const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    bodyContent = bodyMatch[1];
+  }
+
+  // Strip script tags inside foreignObject (scripts cannot execute in an SVG image)
+  bodyContent = bodyContent.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+  // Add deterministic animation time freeze rule so CSS animations step frame-by-frame
+  const freezeAnimationRule = `
+    <style>
+      ${styles}
+      *, *::before, *::after {
+        animation-delay: -${currentTimeSeconds}s !important;
+        animation-play-state: paused !important;
+        transition-delay: -${currentTimeSeconds}s !important;
+      }
+    </style>
+  `;
+
+  const svgMarkup = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <rect width="100%" height="100%" fill="${backgroundColor}" />
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden;position:relative;background:${backgroundColor};color:#ffffff;font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;">
+          ${freezeAnimationRule}
+          ${bodyContent}
+        </div>
+      </foreignObject>
+    </svg>
+  `;
+
+  try {
+    const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+
+    return await new Promise<boolean>((resolve) => {
+      img.onload = () => {
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        resolve(true);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(false);
+      };
+      img.src = url;
+    });
+  } catch {
+    return false;
+  }
 }

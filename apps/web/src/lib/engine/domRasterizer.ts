@@ -1,11 +1,13 @@
 /**
  * High-fidelity client-side DOM-to-Canvas rasterizer.
- * Safely renders HTML/CSS/SVG templates onto an HTML5 2D Canvas without breaching sandbox boundaries.
+ * Safely renders HTML/CSS/SVG templates onto an HTML5 2D Canvas with exact CSS keyframe animation timing.
  */
 
 export interface RasterizeOptions {
   width: number;
   height: number;
+  currentTimeSeconds?: number;
+  durationSeconds?: number;
   backgroundColor?: string;
 }
 
@@ -14,56 +16,72 @@ export async function rasterizeHtmlSnippetToCanvas(
   canvas: HTMLCanvasElement,
   options: RasterizeOptions
 ): Promise<boolean> {
-  const { width, height, backgroundColor = '#090d16' } = options;
+  const { width, height, currentTimeSeconds = 0, backgroundColor = '#090d16' } = options;
   const ctx = canvas.getContext('2d');
   if (!ctx) return false;
 
-  // Prepare clean HTML payload for SVG foreignObject
   let cleanHtml = htmlContent;
 
-  // If complete HTML document, extract inner body or style + content
-  if (cleanHtml.includes('<html')) {
-    const styleMatches = cleanHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
-    const styles = styleMatches.join('\n');
-    const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    const bodyContent = bodyMatch ? bodyMatch[1] : cleanHtml;
-    cleanHtml = `${styles}\n<div style="width:100%;height:100%;box-sizing:border-box;">${bodyContent}</div>`;
+  // Extract embedded CSS styles
+  let styles = '';
+  const styleMatches = cleanHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+  if (styleMatches) {
+    styles = styleMatches.join('\n');
   }
 
-  // Construct SVG foreignObject container
-  const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  // Extract body content or clean HTML
+  let bodyContent = cleanHtml;
+  const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    bodyContent = bodyMatch[1];
+  }
+
+  // Strip script tags inside foreignObject (scripts cannot execute in an SVG image)
+  bodyContent = bodyContent.replace(/<script[\s\S]*?<\/script>/gi, '');
+
+  // Add deterministic animation time freeze rule so CSS animations step frame-by-frame
+  const freezeAnimationRule = `
     <style>
-      * { box-sizing: border-box; }
+      ${styles}
+      *, *::before, *::after {
+        animation-delay: -${currentTimeSeconds}s !important;
+        animation-play-state: paused !important;
+        transition-delay: -${currentTimeSeconds}s !important;
+      }
     </style>
-    <foreignObject width="100%" height="100%">
-      <div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;margin:0;padding:0;overflow:hidden;background:${backgroundColor};">
-        ${cleanHtml}
-      </div>
-    </foreignObject>
-  </svg>`;
+  `;
 
-  const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const img = new Image();
+  const svgMarkup = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+      <rect width="100%" height="100%" fill="${backgroundColor}" />
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden;position:relative;background:${backgroundColor};color:#ffffff;font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;">
+          ${freezeAnimationRule}
+          ${bodyContent}
+        </div>
+      </foreignObject>
+    </svg>
+  `;
 
-  return new Promise<boolean>((resolve) => {
-    img.onload = () => {
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, width, height);
-      ctx.drawImage(img, 0, 0, width, height);
-      URL.revokeObjectURL(url);
-      resolve(true);
-    };
+  try {
+    const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
 
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      // Fallback: fill clean background so video frame is not corrupt
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(0, 0, width, height);
-      resolve(false);
-    };
-
-    img.src = url;
-  });
+    return await new Promise<boolean>((resolve) => {
+      img.onload = () => {
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+        resolve(true);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(false);
+      };
+      img.src = url;
+    });
+  } catch {
+    return false;
+  }
 }
-

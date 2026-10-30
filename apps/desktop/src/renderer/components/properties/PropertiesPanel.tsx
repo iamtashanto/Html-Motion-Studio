@@ -40,20 +40,51 @@ export const PropertiesPanel: React.FC = () => {
 
   if (rightPanelCollapsed) {
     return (
-      <aside className="w-11 bg-slate-950 border-l border-slate-800/80 flex flex-col items-center py-3 select-none text-xs shrink-0 z-10 justify-between">
-        <div className="flex flex-col items-center gap-3">
+      <aside className="w-12 bg-slate-950 border-l border-slate-800/80 flex flex-col items-center py-3 select-none text-xs shrink-0 z-10 justify-between">
+        <div className="flex flex-col items-center gap-3 w-full">
           <button
             onClick={toggleRightPanel}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/80 transition"
-            title="Expand Properties Panel (Ctrl/Cmd+Shift+B)"
-            aria-label="Expand Properties Panel"
+            title="Expand Properties Inspector (Ctrl/Cmd+Shift+B)"
+            aria-label="Expand Properties Inspector"
           >
             <PanelRightOpen className="w-4 h-4 text-blue-400" />
           </button>
+
           <div className="w-6 h-px bg-slate-800" />
-          <div className="writing-vertical-lr rotate-180 text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 py-2">
-            <Settings className="w-3 h-3 text-slate-400" />
-            <span>Inspector</span>
+
+          {/* Quick Tab Selectors */}
+          <button
+            onClick={() => {
+              setActiveTab('export');
+              toggleRightPanel();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-slate-900 transition flex flex-col items-center"
+            title="Export Settings"
+          >
+            <Settings className="w-4 h-4 text-blue-400" />
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('audio');
+              toggleRightPanel();
+            }}
+            className="p-2 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-slate-900 transition flex flex-col items-center"
+            title="Audio Settings"
+          >
+            <Music className="w-4 h-4 text-purple-400" />
+          </button>
+
+          <div className="w-4 h-px bg-slate-800/60 my-1" />
+
+          {/* Vertical Label */}
+          <div
+            onClick={toggleRightPanel}
+            className="cursor-pointer py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition"
+            style={{ writingMode: 'vertical-rl' }}
+          >
+            INSPECTOR
           </div>
         </div>
       </aside>

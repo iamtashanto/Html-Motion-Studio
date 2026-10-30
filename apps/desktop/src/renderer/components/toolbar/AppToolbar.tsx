@@ -21,13 +21,15 @@ import {
   Minus,
   Square,
   X,
+  Code,
 } from 'lucide-react';
 
 interface AppToolbarProps {
   onOpenNewModal: () => void;
+  onOpenCodeEditor: () => void;
 }
 
-export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
+export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal, onOpenCodeEditor }) => {
   const {
     project,
     isDirty,
@@ -298,6 +300,16 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal }) => {
             <PanelRight className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        {/* Code Editor Launcher */}
+        <button
+          onClick={onOpenCodeEditor}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-800 text-cyan-300 hover:text-cyan-200 transition"
+          title="Open HTML/CSS Motion Code Editor"
+        >
+          <Code className="w-3.5 h-3.5 text-cyan-400" />
+          <span className="hidden sm:inline">Code Editor</span>
+        </button>
 
         {/* System Capabilities Pill */}
         <div className="hidden md:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400">

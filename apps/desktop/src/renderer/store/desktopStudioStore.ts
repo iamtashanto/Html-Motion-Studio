@@ -529,18 +529,54 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
       });
 
       try {
-        const res = await window.desktopApi.startExport({
-          jobId: `job-${Date.now()}`,
-          project: {
-            ...project,
-            assets: {}, // Strip large assets from IPC: htmlContent already contains all inlined assets
-          },
-          settings: exportSettings,
-          audioSettings,
-          audioFilePath: audioFilePath || undefined,
-          outputFilePath,
-          strategy: exportStrategy,
-        });
+        const cleanPayload = JSON.parse(
+          JSON.stringify({
+            jobId: `job-${Date.now()}`,
+            project: {
+              id: project.id || 'project',
+              title: project.title || 'Untitled',
+              mode: project.mode || 'file',
+              htmlContent: project.htmlContent || '',
+              entryHtmlPath: project.entryHtmlPath || 'index.html',
+              availableHtmlFiles: project.availableHtmlFiles || ['index.html'],
+              assets: {},
+              detectedDuration: Number(project.detectedDuration) || 4,
+              missingAssets: [],
+            },
+            settings: {
+              aspectRatio: exportSettings.aspectRatio || '16:9',
+              width: Number(exportSettings.width) || 1920,
+              height: Number(exportSettings.height) || 1080,
+              resolution: exportSettings.resolution || '1080p',
+              fps: Number(exportSettings.fps) || 60,
+              format: exportSettings.format || 'mp4',
+              quality: exportSettings.quality || 'high',
+              videoBitrateMbps: Number(exportSettings.videoBitrateMbps) || 16,
+              audioBitrateKbps: Number(exportSettings.audioBitrateKbps) || 256,
+              durationPolicy: exportSettings.durationPolicy || 'project',
+              durationSeconds: Number(exportSettings.durationSeconds) || 4,
+              loopAnimationIfShorter: Boolean(exportSettings.loopAnimationIfShorter),
+              filename: exportSettings.filename || 'export',
+              engineStrategy: exportSettings.engineStrategy || 'auto',
+            },
+            audioSettings: {
+              sourceMode: audioSettings.sourceMode || 'none',
+              fileName: audioSettings.fileName || '',
+              durationSeconds: Number(audioSettings.durationSeconds) || 0,
+              volume: Number(audioSettings.volume) || 1.0,
+              startOffsetSeconds: Number(audioSettings.startOffsetSeconds) || 0,
+              trimInSeconds: Number(audioSettings.trimInSeconds) || 0,
+              trimOutSeconds: Number(audioSettings.trimOutSeconds) || 0,
+              fadeInSeconds: Number(audioSettings.fadeInSeconds) || 0,
+              fadeOutSeconds: Number(audioSettings.fadeOutSeconds) || 0,
+            },
+            audioFilePath: audioFilePath ? String(audioFilePath) : null,
+            outputFilePath: String(outputFilePath),
+            strategy: String(exportStrategy || 'compatibility'),
+          })
+        );
+
+        const res = await window.desktopApi.startExport(cleanPayload);
 
         if (res.success) {
           const validation = await window.desktopApi.verifyExportedVideo(res.outputFilePath);

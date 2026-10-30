@@ -26,7 +26,7 @@ const desktopApi: DesktopApiBridge = {
 
   // Rendering & Export
   startExport: (config: DesktopExportJobConfig) =>
-    ipcRenderer.invoke('render:startExport', config),
+    ipcRenderer.invoke('render:startExport', JSON.parse(JSON.stringify(config))),
   cancelExport: () => ipcRenderer.invoke('render:cancelExport'),
   verifyExportedVideo: (filePath: string) =>
     ipcRenderer.invoke('render:verifyExportedVideo', filePath),

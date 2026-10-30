@@ -8,6 +8,7 @@ import { TimelineTrack } from './components/timeline/TimelineTrack';
 import { ExportProgressDialog } from './components/modals/ExportProgressDialog';
 import { ExportSuccessDialog } from './components/modals/ExportSuccessDialog';
 import { NewProjectModal } from './components/modals/NewProjectModal';
+import { CodeEditorModal } from './components/editor/CodeEditorModal';
 import { AlertCircle, X, GripVertical, GripHorizontal } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
   } = useDesktopStudioStore();
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [isCodeEditorOpen, setIsCodeEditorOpen] = useState(false);
 
   // Resize drag tracking refs
   const dragRef = useRef<{
@@ -195,7 +197,10 @@ export const App: React.FC = () => {
       onPointerUp={handlePointerUp}
     >
       {/* Top Application Toolbar */}
-      <AppToolbar onOpenNewModal={() => setIsNewProjectModalOpen(true)} />
+      <AppToolbar
+        onOpenNewModal={() => setIsNewProjectModalOpen(true)}
+        onOpenCodeEditor={() => setIsCodeEditorOpen(true)}
+      />
 
       {/* Global Error Banner */}
       {exportError && (
@@ -217,7 +222,7 @@ export const App: React.FC = () => {
       {/* Main Studio Workspace: Sidebar + Preview + Properties */}
       <div className="flex-1 flex overflow-hidden min-h-0 relative">
         {/* Left: Project Explorer & Assets */}
-        <AssetsSidebar />
+        <AssetsSidebar onOpenCodeEditor={() => setIsCodeEditorOpen(true)} />
 
         {/* Vertical Resize Handle (Left) */}
         {!leftSidebarCollapsed && (
@@ -273,6 +278,10 @@ export const App: React.FC = () => {
       <NewProjectModal
         isOpen={isNewProjectModalOpen}
         onClose={() => setIsNewProjectModalOpen(false)}
+      />
+      <CodeEditorModal
+        isOpen={isCodeEditorOpen}
+        onClose={() => setIsCodeEditorOpen(false)}
       />
     </div>
   );

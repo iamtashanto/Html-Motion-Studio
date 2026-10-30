@@ -185,6 +185,10 @@ async function main() {
     { id: 'desktop-large', name: 'Studio 1080p UHD', width: 1920, height: 1080 },
   ]) {
     const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
+    page.on('pageerror', (err) => console.log('DESKTOP PAGE ERROR:', err.message));
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') console.log('DESKTOP CONSOLE ERROR:', msg.text());
+    });
     await page.goto('file://' + desktopHtmlPath);
     await page.waitForTimeout(600); // Allow React state hydration
 
