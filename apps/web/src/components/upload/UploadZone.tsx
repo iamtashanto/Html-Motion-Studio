@@ -80,7 +80,7 @@ export const UploadZone: React.FC = () => {
   return (
     <div className="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-md">
       {/* Tab Header */}
-      <div className="flex border-b border-slate-800/80 bg-slate-950/60 p-1.5 gap-1 overflow-x-auto scrollbar-none whitespace-nowrap">
+      <div className="flex border-b border-slate-800/80 bg-slate-950/60 p-1.5 gap-1 overflow-x-auto scrollbar-none whitespace-nowrap max-w-full">
         <button
           onClick={() => setActiveTab('templates')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition ${

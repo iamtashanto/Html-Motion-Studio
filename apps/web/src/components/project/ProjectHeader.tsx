@@ -87,10 +87,10 @@ export const ProjectHeader: React.FC = () => {
     <>
       <div className="w-full bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         {/* Left: Project Title & Mode Info */}
-        <div className="space-y-1.5 min-w-0">
-          <div className="flex items-center gap-2.5">
+        <div className="space-y-1.5 min-w-0 max-w-full">
+          <div className="flex flex-wrap items-center gap-2">
             {isEditingTitle ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 max-w-full">
                 <input
                   type="text"
                   value={titleInput}
@@ -103,19 +103,19 @@ export const ProjectHeader: React.FC = () => {
                     }
                   }}
                   autoFocus
-                  className="bg-slate-950 border border-blue-500 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="bg-slate-950 border border-blue-500 rounded-lg px-2.5 py-1 text-sm font-semibold text-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[180px]"
                 />
                 <button
                   onClick={handleTitleSubmit}
-                  className="p-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition"
+                  className="p-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition shrink-0"
                   title="Save title"
                 >
                   <Check className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 group">
-                <h2 className="text-base font-bold text-white tracking-tight truncate max-w-sm sm:max-w-md">
+              <div className="flex items-center gap-2 group min-w-0">
+                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight truncate max-w-[170px] sm:max-w-md">
                   {project.title}
                 </h2>
                 <button
@@ -123,7 +123,7 @@ export const ProjectHeader: React.FC = () => {
                     setTitleInput(project.title);
                     setIsEditingTitle(true);
                   }}
-                  className="text-slate-500 hover:text-slate-300 transition opacity-70 group-hover:opacity-100 p-1"
+                  className="text-slate-500 hover:text-slate-300 transition opacity-70 group-hover:opacity-100 p-1 shrink-0"
                   title="Rename project"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
@@ -133,7 +133,7 @@ export const ProjectHeader: React.FC = () => {
 
             {/* Dirty / Saved Status Indicator */}
             <span
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border shrink-0 ${
                 isDirty
                   ? 'bg-amber-950/40 border-amber-600/30 text-amber-300'
                   : 'bg-emerald-950/40 border-emerald-600/30 text-emerald-300'
