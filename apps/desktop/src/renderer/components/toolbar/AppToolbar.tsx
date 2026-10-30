@@ -69,6 +69,10 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal, onOpenCo
     }
   }, []);
 
+  const isMac =
+    platform === 'darwin' ||
+    (typeof navigator !== 'undefined' && /Mac|iP[ao]d|iPhone/i.test(navigator.userAgent || navigator.platform));
+
   const handleTitleSubmit = () => {
     if (titleInput.trim()) {
       setProjectTitle(titleInput.trim());
@@ -81,22 +85,24 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal, onOpenCo
   return (
     <header
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-      className="h-14 bg-slate-950 border-b border-slate-800/80 px-4 flex items-center justify-between select-none z-30 shrink-0"
+      className={`h-14 bg-slate-950 border-b border-slate-800/80 flex items-center justify-between select-none z-30 shrink-0 relative ${
+        isMac ? 'pl-[88px] pr-4' : 'px-4'
+      }`}
     >
-      {/* Left: macOS Traffic Lights Reserved Area + Branding & File Menu */}
+      {/* macOS dedicated draggable area over the traffic light region */}
+      {isMac && (
+        <div
+          className="absolute left-0 top-0 w-[88px] h-full"
+          style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Left: Branding & File Menu */}
       <div
         className="flex items-center gap-3"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
-        {/* Dedicated spacing for macOS traffic lights (Close, Minimize, Zoom) */}
-        {platform === 'darwin' && (
-          <div
-            className="w-16 shrink-0 h-8 mr-1"
-            style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-            aria-hidden="true"
-          />
-        )}
-
         {/* Brand Icon */}
         <div className="flex items-center gap-2 pr-2 border-r border-slate-800">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
@@ -332,7 +338,7 @@ export const AppToolbar: React.FC<AppToolbarProps> = ({ onOpenNewModal, onOpenCo
         </button>
 
         {/* Non-Mac Window Controls (Windows / Linux) */}
-        {platform !== 'darwin' && (
+        {!isMac && (
           <div className="flex items-center ml-1 border-l border-slate-800 pl-2 gap-1">
             <button
               onClick={() => window.desktopApi?.minimizeWindow?.()}

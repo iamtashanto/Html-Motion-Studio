@@ -83,6 +83,7 @@ export interface DesktopApiBridge {
   // Projects
   openProjectFromPath: (path: string) => Promise<ProjectData>;
   saveProjectToDisk: (project: ProjectData, targetPath?: string) => Promise<{ success: boolean; filePath: string }>;
+  syncRenderHtml?: (htmlContent: string) => Promise<{ success: boolean; renderHtmlPath: string }>;
   getRecentProjects: () => Promise<RecentProjectItem[]>;
   removeRecentProject: (id: string) => Promise<void>;
   clearRecentProjects: () => Promise<void>;

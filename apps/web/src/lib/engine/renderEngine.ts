@@ -240,6 +240,17 @@ async function exportWithWebCodecs(
       }
     }
 
+    const currentTimestampSeconds = f / settings.fps;
+
+    if (htmlContent) {
+      await rasterizeHtmlSnippetToCanvas(htmlContent, captureCanvas, {
+        width: settings.width,
+        height: settings.height,
+        currentTimeSeconds: currentTimestampSeconds,
+        durationSeconds: settings.durationSeconds,
+      });
+    }
+
     const timestampMicros = f * frameDurationMicros;
     const isKeyFrame = f % (settings.fps * 2) === 0;
 

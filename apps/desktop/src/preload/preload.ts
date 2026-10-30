@@ -19,6 +19,8 @@ const desktopApi: DesktopApiBridge = {
     ipcRenderer.invoke('project:openFromPath', targetPath),
   saveProjectToDisk: (project: ProjectData, targetPath?: string) =>
     ipcRenderer.invoke('project:saveToDisk', project, targetPath),
+  syncRenderHtml: (htmlContent: string) =>
+    ipcRenderer.invoke('project:syncRenderHtml', htmlContent),
   getRecentProjects: () => ipcRenderer.invoke('project:getRecentProjects'),
   removeRecentProject: (id: string) =>
     ipcRenderer.invoke('project:removeRecentProject', id),

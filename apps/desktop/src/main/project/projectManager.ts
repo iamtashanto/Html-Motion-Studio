@@ -84,12 +84,17 @@ export class ProjectManager {
     }
 
     const rewrittenHtml = this.rewriteAssetReferences(rawContent, assets);
+    const activeRenderPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_single.html`);
+    try {
+      fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
+    } catch {}
 
     return {
       id: `file-${Date.now()}`,
       title,
       mode: 'file',
       htmlContent: rewrittenHtml,
+      renderHtmlPath: activeRenderPath,
       entryHtmlPath: fileName,
       availableHtmlFiles: [fileName],
       assets,
@@ -170,12 +175,17 @@ export class ProjectManager {
     const rawHtml = assets[defaultEntry]?.content || '';
     const rewrittenHtml = this.rewriteAssetReferences(rawHtml, assets);
     const title = path.basename(zipPath).replace(/\.[^/.]+$/, '');
+    const activeRenderPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_zip.html`);
+    try {
+      fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
+    } catch {}
 
     return {
       id: `zip-${Date.now()}`,
       title,
       mode: 'zip',
       htmlContent: rewrittenHtml,
+      renderHtmlPath: activeRenderPath,
       entryHtmlPath: defaultEntry,
       availableHtmlFiles: htmlFiles,
       assets,
@@ -262,12 +272,17 @@ export class ProjectManager {
     const rawHtml = assets[defaultEntry]?.content || '';
     const rewrittenHtml = this.rewriteAssetReferences(rawHtml, assets);
     const title = path.basename(folderPath);
+    const activeRenderPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_folder.html`);
+    try {
+      fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
+    } catch {}
 
     return {
       id: `folder-${Date.now()}`,
       title,
       mode: 'file',
       htmlContent: rewrittenHtml,
+      renderHtmlPath: activeRenderPath,
       entryHtmlPath: defaultEntry,
       availableHtmlFiles: htmlFiles,
       assets,
@@ -284,6 +299,12 @@ export class ProjectManager {
       throw new Error('Invalid project file format: missing required project fields.');
     }
 
+    const activeRenderPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_saved.html`);
+    try {
+      fs.writeFileSync(activeRenderPath, parsed.htmlContent, 'utf-8');
+      parsed.renderHtmlPath = activeRenderPath;
+    } catch {}
+
     return parsed as ProjectData;
   }
 
@@ -292,6 +313,12 @@ export class ProjectManager {
     const serialized = JSON.stringify(project, null, 2);
     fs.writeFileSync(finalPath, serialized, 'utf-8');
     return finalPath;
+  }
+
+  public syncRenderHtml(htmlContent: string): { success: boolean; renderHtmlPath: string } {
+    const renderHtmlPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_workspace.html`);
+    fs.writeFileSync(renderHtmlPath, htmlContent || '<html><body></body></html>', 'utf-8');
+    return { success: true, renderHtmlPath };
   }
 
   public validateSafePath(entryPath: string): void {

@@ -21,9 +21,11 @@ export async function rasterizeTemplateToCanvas(
   const ctx = canvas.getContext('2d');
   if (!ctx) return false;
 
-  // 1. Direct SVG Extraction (Templates with <svg>)
-  if (htmlContent.includes('<svg') && !htmlContent.includes('<foreignObject')) {
-    const svgMatch = htmlContent.match(/<svg[\s\S]*?<\/svg>/i);
+  const trimmed = htmlContent.trim();
+
+  // 1. Pure Standalone SVG Image (starts with <svg and does not contain <body> or <html>)
+  if (trimmed.startsWith('<svg') && !trimmed.includes('<body') && !trimmed.includes('<html')) {
+    const svgMatch = trimmed.match(/<svg[\s\S]*?<\/svg>/i);
     if (svgMatch) {
       let svgMarkup = svgMatch[0];
       if (!svgMarkup.includes('width=')) {
@@ -54,7 +56,14 @@ export async function rasterizeTemplateToCanvas(
     }
   }
 
-  // 2. Direct Canvas / rAF dynamic drawing (Templates 4, 6, 10, 12)
+  // 2. High-Fidelity SVG ForeignObject DOM-to-Canvas Rasterization (Primary Engine)
+  // Accurately renders arbitrary user HTML animations, CSS keyframes, typography, layouts, and inlined assets
+  const foreignObjectRendered = await rasterizeForeignObjectHtml(htmlContent, canvas, options);
+  if (foreignObjectRendered) {
+    return true;
+  }
+
+  // 3. Fallback: Direct Canvas / rAF dynamic drawing (Templates 4, 6, 10, 12)
   if (htmlContent.includes('getContext') || htmlContent.includes('<canvas')) {
     const t = currentTimeSeconds;
 
@@ -160,12 +169,6 @@ export async function rasterizeTemplateToCanvas(
     return true;
   }
 
-  // 4. Real User HTML/CSS ForeignObject Rasterization
-  // Accurately renders arbitrary user HTML animations, CSS keyframes, typography, and styling
-  const foreignObjectRendered = await rasterizeForeignObjectHtml(htmlContent, canvas, options);
-  if (foreignObjectRendered) {
-    return true;
-  }
 
   // 5. CSS Transitions
   if (htmlContent.includes('active-') || htmlContent.includes('Transitions Automated')) {

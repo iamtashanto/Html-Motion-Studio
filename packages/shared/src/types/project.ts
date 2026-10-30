@@ -14,6 +14,7 @@ export interface ProjectData {
   title: string;
   mode: UploadMode;
   htmlContent: string;
+  renderHtmlPath?: string; // Optional path to pre-rendered HTML file on local disk for zero-overhead IPC
   cssContent?: string;
   jsContent?: string;
   entryHtmlPath: string;

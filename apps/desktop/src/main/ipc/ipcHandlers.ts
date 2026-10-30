@@ -93,6 +93,11 @@ export function registerIpcHandlers(
     return { success: true, filePath: savedPath };
   });
 
+  // Sync Render HTML to local disk for zero-IPC payload overhead
+  ipcMain.handle('project:syncRenderHtml', async (_, htmlContent: string) => {
+    return projectManager.syncRenderHtml(htmlContent);
+  });
+
   // SQLite Recents
   ipcMain.handle('project:getRecentProjects', async () => {
     return projectDb.getRecentProjects(15);

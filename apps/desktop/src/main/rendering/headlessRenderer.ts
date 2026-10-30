@@ -69,7 +69,16 @@ export class HeadlessRenderer {
 
       // 2. Load the project HTML content via temporary file to bypass Chromium URL length limits
       const tempEntryPath = path.join(jobFramesDir, 'render_entry.html');
-      fs.writeFileSync(tempEntryPath, project.htmlContent, 'utf-8');
+      if (project.renderHtmlPath && fs.existsSync(project.renderHtmlPath)) {
+        try {
+          fs.copyFileSync(project.renderHtmlPath, tempEntryPath);
+        } catch {
+          fs.writeFileSync(tempEntryPath, fs.readFileSync(project.renderHtmlPath, 'utf-8'), 'utf-8');
+        }
+      } else {
+        fs.writeFileSync(tempEntryPath, project.htmlContent || '<html><body></body></html>', 'utf-8');
+      }
+
       await Promise.race([
         this.renderWindow.loadFile(tempEntryPath),
         new Promise((_, reject) =>

@@ -529,6 +529,22 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
       });
 
       try {
+        // Guarantee zero-IPC overhead by caching HTML to local temp file if renderHtmlPath not yet set
+        let effectiveRenderHtmlPath = project.renderHtmlPath;
+        if (!effectiveRenderHtmlPath && window.desktopApi?.syncRenderHtml) {
+          try {
+            const syncRes = await window.desktopApi.syncRenderHtml(project.htmlContent || '');
+            if (syncRes?.renderHtmlPath) {
+              effectiveRenderHtmlPath = syncRes.renderHtmlPath;
+              set((state) => ({
+                project: { ...state.project, renderHtmlPath: syncRes.renderHtmlPath },
+              }));
+            }
+          } catch (e) {
+            console.warn('Failed to sync render HTML to disk:', e);
+          }
+        }
+
         const cleanPayload = JSON.parse(
           JSON.stringify({
             jobId: `job-${Date.now()}`,
@@ -536,7 +552,9 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
               id: project.id || 'project',
               title: project.title || 'Untitled',
               mode: project.mode || 'file',
-              htmlContent: project.htmlContent || '',
+              // Never pass massive inlined base64 HTML string over Chromium IPC
+              htmlContent: effectiveRenderHtmlPath ? '' : (project.htmlContent || ''),
+              renderHtmlPath: effectiveRenderHtmlPath || undefined,
               entryHtmlPath: project.entryHtmlPath || 'index.html',
               availableHtmlFiles: project.availableHtmlFiles || ['index.html'],
               assets: {},
