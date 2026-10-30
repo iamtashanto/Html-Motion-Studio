@@ -34,7 +34,6 @@ export const App: React.FC = () => {
     setIsResizing,
     isPlaying,
     setIsPlaying,
-    currentTime,
     seek,
     exportSettings,
   } = useDesktopStudioStore();
@@ -86,12 +85,14 @@ export const App: React.FC = () => {
       // ArrowLeft / ArrowRight: Frame stepping
       else if (e.key === 'ArrowLeft') {
         e.preventDefault();
+        const curTime = useDesktopStudioStore.getState().currentTime;
         const dt = e.shiftKey ? 1.0 : 1 / (exportSettings.fps || 60);
-        seek(Math.max(0, currentTime - dt));
+        seek(Math.max(0, curTime - dt));
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
+        const curTime = useDesktopStudioStore.getState().currentTime;
         const dt = e.shiftKey ? 1.0 : 1 / (exportSettings.fps || 60);
-        seek(Math.min(exportSettings.durationSeconds, currentTime + dt));
+        seek(Math.min(exportSettings.durationSeconds, curTime + dt));
       }
       // Toggle Left Sidebar: Cmd/Ctrl + B or '['
       else if ((cmdOrCtrl && e.key.toLowerCase() === 'b' && !e.shiftKey) || e.key === '[') {
@@ -114,7 +115,6 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
     isPlaying,
-    currentTime,
     exportSettings.fps,
     exportSettings.durationSeconds,
     setIsPlaying,

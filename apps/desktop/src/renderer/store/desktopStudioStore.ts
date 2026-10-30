@@ -531,7 +531,10 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
       try {
         const res = await window.desktopApi.startExport({
           jobId: `job-${Date.now()}`,
-          project,
+          project: {
+            ...project,
+            assets: {}, // Strip large assets from IPC: htmlContent already contains all inlined assets
+          },
           settings: exportSettings,
           audioSettings,
           audioFilePath: audioFilePath || undefined,
@@ -558,6 +561,12 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
               currentFps: exportSettings.fps,
               message: 'Export completed successfully!',
             },
+          });
+        } else {
+          set({
+            isExporting: false,
+            exportError: res.error || 'Desktop rendering failed.',
+            exportProgress: null,
           });
         }
       } catch (err: unknown) {

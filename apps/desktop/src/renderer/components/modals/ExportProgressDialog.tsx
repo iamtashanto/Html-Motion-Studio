@@ -8,7 +8,7 @@ export const ExportProgressDialog: React.FC = () => {
   if (!isExporting || !exportProgress) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200 select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-sm animate-in fade-in duration-200 select-none">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useDesktopStudioStore } from '../../store/desktopStudioStore';
 import {
   FileCode,
@@ -34,7 +34,7 @@ export const AssetsSidebar: React.FC = () => {
     html: true,
     styles: true,
     scripts: true,
-    images: true,
+    images: false, // Default images to collapsed for high performance on large projects
     audio: true,
   });
 
@@ -42,11 +42,16 @@ export const AssetsSidebar: React.FC = () => {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const assets = Object.values(project.assets);
-  const cssAssets = assets.filter((a) => a.type === 'text/css');
-  const jsAssets = assets.filter((a) => a.type === 'application/javascript');
-  const imgAssets = assets.filter((a) => a.type.startsWith('image/'));
-  const fontAssets = assets.filter((a) => a.type.startsWith('font/'));
+  const { assets, cssAssets, jsAssets, imgAssets, fontAssets } = useMemo(() => {
+    const all = Object.values(project.assets);
+    return {
+      assets: all,
+      cssAssets: all.filter((a) => a.type === 'text/css'),
+      jsAssets: all.filter((a) => a.type === 'application/javascript'),
+      imgAssets: all.filter((a) => a.type.startsWith('image/')),
+      fontAssets: all.filter((a) => a.type.startsWith('font/')),
+    };
+  }, [project.assets]);
 
   if (leftSidebarCollapsed) {
     return (

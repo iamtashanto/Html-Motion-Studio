@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useDesktopStudioStore } from '../../store/desktopStudioStore';
 import {
   Volume2,
@@ -71,13 +71,15 @@ export const TimelineTrack: React.FC = () => {
     seek(target);
   };
 
-  // Generate tick marks across duration
-  const totalTicks = Math.min(60 * zoomLevel, Math.max(5, Math.round(duration * 2 * zoomLevel)));
-  const ticks = Array.from({ length: totalTicks + 1 }, (_, i) => {
-    const time = (i / totalTicks) * duration;
-    const isMajor = i % Math.max(1, 2 * zoomLevel) === 0;
-    return { time, isMajor, pct: (i / totalTicks) * 100 };
-  });
+  // Generate tick marks across duration (memoized to avoid re-allocation on currentTime tick)
+  const ticks = useMemo(() => {
+    const totalTicks = Math.min(60 * zoomLevel, Math.max(5, Math.round(duration * 2 * zoomLevel)));
+    return Array.from({ length: totalTicks + 1 }, (_, i) => {
+      const time = (i / totalTicks) * duration;
+      const isMajor = i % Math.max(1, 2 * zoomLevel) === 0;
+      return { time, isMajor, pct: (i / totalTicks) * 100 };
+    });
+  }, [duration, zoomLevel]);
 
   if (timelineCollapsed) {
     return (

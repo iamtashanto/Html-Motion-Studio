@@ -67,11 +67,15 @@ export class HeadlessRenderer {
 
       this.renderWindow.setContentSize(settings.width, settings.height);
 
-      // 2. Load the project HTML content via data URL or safe local buffer
-      const encodedHtml = Buffer.from(project.htmlContent).toString('base64');
-      const dataUri = `data:text/html;base64,${encodedHtml}`;
-
-      await this.renderWindow.loadURL(dataUri);
+      // 2. Load the project HTML content via temporary file to bypass Chromium URL length limits
+      const tempEntryPath = path.join(jobFramesDir, 'render_entry.html');
+      fs.writeFileSync(tempEntryPath, project.htmlContent, 'utf-8');
+      await Promise.race([
+        this.renderWindow.loadFile(tempEntryPath),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Chromium page load timed out after 20 seconds.')), 20000)
+        ),
+      ]);
 
       // Inject deterministic clock hook if compatibility mode
       await this.renderWindow.webContents.executeJavaScript(`

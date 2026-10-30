@@ -33,10 +33,45 @@ export const DesktopPreview: React.FC = () => {
   } = useDesktopStudioStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(performance.now());
+  const timeRef = useRef<number>(currentTime);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [stageDimensions, setStageDimensions] = useState({ width: 900, height: 600 });
+
+  // Sync external scrubbing/seeks into timeRef
+  useEffect(() => {
+    if (!isPlaying) {
+      timeRef.current = currentTime;
+      if (iframeRef.current && iframeRef.current.contentWindow) {
+        try {
+          const win = iframeRef.current.contentWindow as unknown as {
+            __HMS_SEEK__?: (t: number) => void;
+          };
+          if (typeof win.__HMS_SEEK__ === 'function') {
+            win.__HMS_SEEK__(currentTime);
+          }
+        } catch {}
+      }
+    }
+  }, [currentTime, isPlaying]);
+
+  // Measure stage dimensions for responsive viewport fitting
+  useEffect(() => {
+    if (!stageRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setStageDimensions({ width, height });
+        }
+      }
+    });
+    observer.observe(stageRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -49,7 +84,7 @@ export const DesktopPreview: React.FC = () => {
     }
   };
 
-  // Handle animation loop
+  // High-performance animation loop (Zero effect re-triggers during playback)
   useEffect(() => {
     if (!isPlaying) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
@@ -63,7 +98,7 @@ export const DesktopPreview: React.FC = () => {
       lastTimeRef.current = now;
 
       const dur = exportSettings.durationSeconds;
-      let nextTime = currentTime + deltaSec;
+      let nextTime = timeRef.current + deltaSec;
 
       if (nextTime >= dur) {
         if (exportSettings.loopAnimationIfShorter) {
@@ -74,9 +109,10 @@ export const DesktopPreview: React.FC = () => {
         }
       }
 
+      timeRef.current = nextTime;
       setCurrentTime(nextTime);
 
-      // Seek inside iframe
+      // Seek inside iframe directly
       if (iframeRef.current && iframeRef.current.contentWindow) {
         try {
           const win = iframeRef.current.contentWindow as unknown as {
@@ -86,7 +122,7 @@ export const DesktopPreview: React.FC = () => {
             win.__HMS_SEEK__(nextTime);
           }
         } catch {
-          // ignore cross-origin sandbox restrictions
+          // ignore sandbox boundaries
         }
       }
 
@@ -100,7 +136,7 @@ export const DesktopPreview: React.FC = () => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying, currentTime, exportSettings.durationSeconds, exportSettings.loopAnimationIfShorter, setCurrentTime, setIsPlaying]);
+  }, [isPlaying, exportSettings.durationSeconds, exportSettings.loopAnimationIfShorter, setCurrentTime, setIsPlaying]);
 
   // Background style helper
   const bgClasses = {
@@ -110,24 +146,42 @@ export const DesktopPreview: React.FC = () => {
     checker: 'bg-[repeating-conic-gradient(#1e293b_0%_25%,#0f172a_0%_50%)] [background-size:20px_20px]',
   }[previewBackground];
 
-  // Aspect ratio dimension calculation
-  const ratioMap = {
-    '16:9': 'aspect-[16/9]',
-    '9:16': 'aspect-[9/16]',
-    '1:1': 'aspect-square',
-    '4:5': 'aspect-[4/5]',
-    'custom': 'aspect-video',
-  };
-  const aspectClass = ratioMap[exportSettings.aspectRatio] || 'aspect-[16/9]';
+  // Calculate pixel-perfect fitted stage frame dimensions
+  const targetRatio = (exportSettings.width || 1920) / (exportSettings.height || 1080);
+  const padding = 48; // balanced breathing room padding
+  const availW = Math.max(120, stageDimensions.width - padding);
+  const availH = Math.max(120, stageDimensions.height - padding);
+  const stageRatio = availW / availH;
 
-  // Zoom transform style
-  const zoomStyles = {
-    fit: 'w-full h-full object-contain',
-    '50%': 'w-1/2 h-1/2',
-    '75%': 'w-3/4 h-3/4',
-    '100%': 'w-full h-full',
-    '200%': 'w-[200%] h-[200%]',
-  }[previewZoom];
+  let baseWidth: number;
+  let baseHeight: number;
+
+  if (stageRatio > targetRatio) {
+    // Stage is wider than target: fit to available height
+    baseHeight = availH;
+    baseWidth = Math.round(availH * targetRatio);
+  } else {
+    // Stage is taller than target: fit to available width
+    baseWidth = availW;
+    baseHeight = Math.round(availW / targetRatio);
+  }
+
+  let frameWidth = baseWidth;
+  let frameHeight = baseHeight;
+
+  if (previewZoom === '50%') {
+    frameWidth = Math.round(baseWidth * 0.5);
+    frameHeight = Math.round(baseHeight * 0.5);
+  } else if (previewZoom === '75%') {
+    frameWidth = Math.round(baseWidth * 0.75);
+    frameHeight = Math.round(baseHeight * 0.75);
+  } else if (previewZoom === '100%') {
+    frameWidth = Math.min(availW, exportSettings.width);
+    frameHeight = Math.round(frameWidth / targetRatio);
+  } else if (previewZoom === '200%') {
+    frameWidth = Math.round(baseWidth * 1.5);
+    frameHeight = Math.round(baseHeight * 1.5);
+  }
 
   return (
     <div
@@ -216,16 +270,22 @@ export const DesktopPreview: React.FC = () => {
       </div>
 
       {/* Main Viewport Stage */}
-      <div className={`flex-1 relative flex items-center justify-center p-6 overflow-hidden ${bgClasses}`}>
-        {/* Frame Aspect Container */}
-        <div className={`relative max-w-full max-h-full ${aspectClass} border-2 border-slate-700/60 shadow-2xl rounded-xl overflow-hidden bg-black flex items-center justify-center`}>
+      <div
+        ref={stageRef}
+        className={`flex-1 relative flex items-center justify-center p-6 overflow-auto ${bgClasses}`}
+      >
+        {/* Frame Container */}
+        <div
+          style={{ width: `${frameWidth}px`, height: `${frameHeight}px` }}
+          className="relative shrink-0 border-2 border-slate-700/60 shadow-2xl rounded-xl overflow-hidden bg-black flex items-center justify-center"
+        >
           <iframe
             key={previewKey}
             ref={iframeRef}
             srcDoc={project.htmlContent}
             title="HTML Animation Preview"
             sandbox="allow-scripts"
-            className={`${zoomStyles} border-0 ${isResizing ? 'pointer-events-none' : 'pointer-events-auto'}`}
+            className={`w-full h-full border-0 ${isResizing ? 'pointer-events-none' : 'pointer-events-auto'}`}
           />
         </div>
       </div>

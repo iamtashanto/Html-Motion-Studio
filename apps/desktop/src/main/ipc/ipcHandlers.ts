@@ -134,6 +134,19 @@ export function registerIpcHandlers(
       return { success: true, outputFilePath };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('render:progress', {
+          jobId: config.jobId,
+          status: 'error',
+          currentFrame: 0,
+          totalFrames: 0,
+          percentage: 0,
+          elapsedMs: 0,
+          estimatedRemainingMs: 0,
+          currentFps: 0,
+          message: msg,
+        });
+      }
       return { success: false, error: msg };
     }
   });

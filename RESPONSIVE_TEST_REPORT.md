@@ -1,6 +1,6 @@
 # HTML Motion Studio — Responsive Test Report
 
-**Execution Timestamp:** 2026-10-30T12:47:55.528Z  
+**Execution Timestamp:** 2026-10-30T13:04:35.600Z  
 **Screenshots Directory:** `test-output/screenshots/`  
 **Test Harness:** Headless Chromium Automated Evaluation
 
@@ -25,9 +25,9 @@
 
 | Workspace Configuration | Window Dimensions | Left Assets Sidebar | Right Properties Panel | Central Stage Viewport | Status | Screenshot |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Studio Laptop** | `1280×800` | `260px` | `320px` | `300×167px` | **PASS** | [`desktop-desktop-laptop-1280x800.png`](file:///Users/ta-shanto/Coding/products/Html-Motion-Studio/test-output/screenshots/desktop-desktop-laptop-1280x800.png) |
-| **Studio Desktop** | `1440×900` | `260px` | `320px` | `300×167px` | **PASS** | [`desktop-desktop-standard-1440x900.png`](file:///Users/ta-shanto/Coding/products/Html-Motion-Studio/test-output/screenshots/desktop-desktop-standard-1440x900.png) |
-| **Studio 1080p UHD** | `1920×1080` | `260px` | `320px` | `300×167px` | **PASS** | [`desktop-desktop-large-1920x1080.png`](file:///Users/ta-shanto/Coding/products/Html-Motion-Studio/test-output/screenshots/desktop-desktop-large-1920x1080.png) |
+| **Studio Laptop** | `1280×800` | `260px` | `320px` | `592×331px` | **PASS** | [`desktop-desktop-laptop-1280x800.png`](file:///Users/ta-shanto/Coding/products/Html-Motion-Studio/test-output/screenshots/desktop-desktop-laptop-1280x800.png) |
+| **Studio Desktop** | `1440×900` | `260px` | `320px` | `752×421px` | **PASS** | [`desktop-desktop-standard-1440x900.png`](file:///Users/ta-shanto/Coding/products/Html-Motion-Studio/test-output/screenshots/desktop-desktop-standard-1440x900.png) |
+| **Studio 1080p UHD** | `1920×1080` | `260px` | `320px` | `1198×672px` | **PASS** | [`desktop-desktop-large-1920x1080.png`](file:///Users/ta-shanto/Coding/products/Html-Motion-Studio/test-output/screenshots/desktop-desktop-large-1920x1080.png) |
 
 ---
 
