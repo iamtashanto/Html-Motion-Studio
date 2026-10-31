@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Motion Studio - Product Promo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    /* 
+      HTML MOTION STUDIO - CLEAN VIDEO STAGE (1920x1080)
+      Zero UI controls / buttons - pure motion canvas for MP4 export
+    */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #030611;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    #stage {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 20%, #151f38 0%, #070a16 65%, #03050c 100%);
+      transform-origin: center center;
+    }
+
+    /* Ambient background grid and glow */
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.8) 20%, transparent 80%);
+      -webkit-mask-image: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.8) 20%, transparent 80%);
+    }
+
+    #particles-canvas {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      pointer-events: none;
+    }
+
+    /* Radial glow spots */
+    .glow-spot-1 {
+      position: absolute;
+      width: 700px;
+      height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, transparent 70%);
+      top: -150px;
+      left: 10%;
+      filter: blur(60px);
+      pointer-events: none;
+    }
+
+    .glow-spot-2 {
+      position: absolute;
+      width: 650px;
+      height: 650px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.20) 0%, transparent 70%);
+      bottom: -150px;
+      right: 15%;
+      filter: blur(70px);
+      pointer-events: none;
+    }
+
+    /* Scene Layers */
+    .scene {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.96);
+      will-change: opacity, transform;
+    }
+
+    /* SCENE 1: Problem / Hook */
+    .hook-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 24px;
+      border-radius: 9999px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 30px;
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+    }
+
+    .hook-title {
+      font-size: 78px;
+      font-weight: 900;
+      line-height: 1.15;
+      text-align: center;
+      color: #ffffff;
+      max-width: 1400px;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+
+    .hook-title span.grad-bad {
+      background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hook-title span.grad-good {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hook-subtitle {
+      font-family: 'Hind Siliguri', sans-serif;
+      font-size: 34px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-align: center;
+      max-width: 1100px;
+      line-height: 1.5;
+    }
+
+    .code-float-card {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 20px 28px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 19px;
+      color: #e2e8f0;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px);
+    }
+
+    /* SCENE 2: The Studio Hero Reveal */
+    .hero-logo-box {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      border-radius: 36px;
+      background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 80px rgba(99, 102, 241, 0.6), inset 0 2px 4px rgba(255,255,255,0.3);
+      margin-bottom: 32px;
+    }
+
+    .hero-logo-box svg {
+      width: 76px;
+      height: 76px;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    }
+
+    .hero-pulse-ring {
+      position: absolute;
+      inset: -24px;
+      border-radius: 54px;
+      border: 2px dashed rgba(129, 140, 248, 0.4);
+      animation: spinRing 20s linear infinite;
+    }
+
+    @keyframes spinRing {
+      to { transform: rotate(360deg); }
+    }
+
+    .hero-title {
+      font-size: 88px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      text-align: center;
+      color: #ffffff;
+      margin-bottom: 14px;
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, #60a5fa 0%, #a855f7 50%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-family: 'Hind Siliguri', sans-serif;
+      font-size: 36px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+
+    .hero-pills {
+      display: flex;
+      gap: 20px;
+    }
+
+    .pill-feature {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 28px;
+      border-radius: 9999px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 20px;
+      font-weight: 700;
+      color: #f1f5f9;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      backdrop-filter: blur(8px);
+    }
+
+    .pill-feature .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 12px #10b981;
+    }
+
+    /* SCENE 3: Feature Architecture & Mockup */
+    .scene-split {
+      width: 1600px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 60px;
+    }
+
+    .feature-left {
+      flex: 1;
+    }
+
+    .feature-tag {
+      display: inline-block;
+      padding: 8px 18px;
+      border-radius: 8px;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      font-size: 18px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 20px;
+    }
+
+    .feature-headline {
+      font-family: 'Hind Siliguri', sans-serif;
+      font-size: 58px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #ffffff;
+      margin-bottom: 24px;
+    }
+
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 22px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .feature-item-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #60a5fa;
+      font-size: 20px;
+    }
+
+    .mockup-window {
+      width: 820px;
+      height: 520px;
+      background: #090d1a;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.7), 0 0 60px rgba(59, 130, 246, 0.15);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transform: perspective(1000px) rotateY(-8deg) rotateX(4deg);
+    }
+
+    .mockup-header {
+      height: 50px;
+      background: #0f1629;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 10px;
+    }
+
+    .mockup-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #ef4444; }
+    .dot-yellow { background: #f59e0b; }
+    .dot-green { background: #10b981; }
+
+    .mockup-body {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: relative;
+    }
+
+    .mockup-viewport {
+      flex: 1;
+      background: radial-gradient(circle at center, #1e293b 0%, #0a0f1d 100%);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mockup-timeline {
+      height: 90px;
+      background: #0a0e1c;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .mockup-track {
+      height: 28px;
+      background: rgba(30, 41, 59, 0.6);
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .mockup-track-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 48%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      border-radius: 6px;
+    }
+
+    .waveform-bars {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 10px;
+      opacity: 0.6;
+    }
+
+    .wave-bar {
+      flex: 1;
+      background: #a5b4fc;
+      border-radius: 2px;
+      height: 10px;
+    }
+
+    /* SCENE 4: 100% Offline & GPU */
+    .chip-container {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin-bottom: 36px;
+    }
+
+    .chip-core {
+      position: absolute;
+      inset: 20px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      border-radius: 28px;
+      border: 2px solid #6366f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 50px rgba(99, 102, 241, 0.5), inset 0 0 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .chip-circuit {
+      position: absolute;
+      inset: 0;
+      border-radius: 40px;
+      border: 2px dashed rgba(99, 102, 241, 0.4);
+    }
+
+    .offline-title {
+      font-size: 74px;
+      font-weight: 900;
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .offline-title span {
+      background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .offline-desc {
+      font-family: 'Hind Siliguri', sans-serif;
+      font-size: 34px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-align: center;
+      max-width: 1200px;
+      line-height: 1.5;
+      margin-bottom: 40px;
+    }
+
+    .offline-badges {
+      display: flex;
+      gap: 24px;
+    }
+
+    .sec-badge {
+      padding: 16px 32px;
+      border-radius: 16px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: #6ee7b7;
+      font-size: 22px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* SCENE 5: Call to Action & Download */
+    .cta-logo {
+      width: 110px;
+      height: 110px;
+      border-radius: 30px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 60px rgba(139, 92, 246, 0.5);
+      margin-bottom: 24px;
+    }
+
+    .cta-title {
+      font-size: 80px;
+      font-weight: 900;
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .cta-title span {
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #f472b6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cta-subtitle {
+      font-family: 'Hind Siliguri', sans-serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 44px;
+      text-align: center;
+    }
+
+    .platform-cards {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .platform-card {
+      width: 260px;
+      padding: 24px 20px;
+      border-radius: 20px;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    }
+
+    .platform-card svg {
+      width: 44px;
+      height: 44px;
+      fill: #ffffff;
+    }
+
+    .platform-card .p-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .platform-card .p-spec {
+      font-size: 15px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    .dev-credit-pill {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 28px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 20px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    .dev-credit-pill span.author {
+      color: #38bdf8;
+    }
+
+    /* Bottom Subtitle Caption Overlay */
+    #subtitle-container {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    #subtitle-box {
+      background: rgba(6, 10, 24, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      padding: 16px 36px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(59, 130, 246, 0.2);
+      backdrop-filter: blur(16px);
+      max-width: 1400px;
+      text-align: center;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #subtitle-text {
+      font-family: 'Hind Siliguri', sans-serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.4;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    }
+
+    #subtitle-text .highlight {
+      color: #38bdf8;
+      font-weight: 700;
+    }
+
+    /* Subtle progress indicator bar at the very top edge */
+    #render-progress {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+      width: 0%;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- STAGE (1920x1080) -->
+  <div id="stage">
+    <div id="render-progress"></div>
+    <div class="bg-grid"></div>
+    <div class="glow-spot-1" id="glow1"></div>
+    <div class="glow-spot-2" id="glow2"></div>
+    <canvas id="particles-canvas" width="1920" height="1080"></canvas>
+
+    <!-- SCENE 1: The Problem / Hook (0.0s - 6.0s) -->
+    <div class="scene" id="scene-1">
+      <div class="hook-badge">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        The Problem
+      </div>
+      <h1 class="hook-title">
+        Web Animation থেকে Smooth Video বানানো কি <span class="grad-bad">ঝামেলার?</span>
+      </h1>
+      <p class="hook-subtitle">
+        স্ক্রিন রেকর্ডারের ফ্রেম ড্রপ বা ভারী ব্রাউজার ল্যাগিংয়ের দিন শেষ!
+      </p>
+
+      <div class="code-float-card" style="top: 180px; left: 120px;" id="c1">
+        &lt;style&gt; @keyframes orbit { ... } &lt;/style&gt;
+      </div>
+      <div class="code-float-card" style="bottom: 220px; right: 140px;" id="c2">
+        canvas.getContext('2d').renderParticles();
+      </div>
+    </div>
+
+    <!-- SCENE 2: The Studio Hero Reveal (6.0s - 13.0s) -->
+    <div class="scene" id="scene-2">
+      <div class="hero-logo-box">
+        <div class="hero-pulse-ring"></div>
+        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="14" fill="none"/>
+          <path d="M16 14L8 24L16 34" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M32 14L40 24L32 34" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <polygon points="21,17 31,24 21,31" fill="#38bdf8"/>
+        </svg>
+      </div>
+      <h1 class="hero-title">HTML Motion <span>Studio</span></h1>
+      <p class="hero-subtitle">যেকোনো HTML, CSS ও JS কোডকে রূপান্তর করুন 4K Ultra HD MP4 ভিডিওতে</p>
+      <div class="hero-pills">
+        <div class="pill-feature"><span class="dot"></span> Deterministic 60 FPS Stepping</div>
+        <div class="pill-feature"><span class="dot"></span> Zero Screen-Recording Drops</div>
+        <div class="pill-feature"><span class="dot"></span> 100% Watermark Free</div>
+      </div>
+    </div>
+
+    <!-- SCENE 3: Feature Architecture & Mockup (13.0s - 20.0s) -->
+    <div class="scene" id="scene-3">
+      <div class="scene-split">
+        <div class="feature-left">
+          <div class="feature-tag">Next-Gen Video Engine</div>
+          <h2 class="feature-headline">
+            পারফেক্ট ফ্রেম বাই ফ্রেম<br>
+            টাইমলাইন ও অডিও সিঙ্ক
+          </h2>
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-item-icon">⚡</div>
+              <span>Strategy A & B Deterministic Stepping Engine</span>
+            </div>
+            <div class="feature-item">
+              <div class="feature-item-icon">🎵</div>
+              <span>Soundtrack Audio Waveform & Multi-track Timeline</span>
+            </div>
+            <div class="feature-item">
+              <div class="feature-item-icon">📱</div>
+              <span>16:9 Landscape ও 9:16 Vertical Reels/Shorts সাপোর্ট</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mockup-window" id="mockup">
+          <div class="mockup-header">
+            <div class="mockup-dot dot-red"></div>
+            <div class="mockup-dot dot-yellow"></div>
+            <div class="mockup-dot dot-green"></div>
+            <span style="font-size: 13px; color: #64748b; margin-left: 12px; font-weight: 600;">HTML Motion Studio Pro — rendering-pipeline.mp4</span>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-viewport">
+              <div style="text-align: center;">
+                <div style="font-size: 38px; font-weight: 800; color: #38bdf8; margin-bottom: 6px;">60.00 FPS</div>
+                <div style="font-size: 14px; color: #94a3b8; font-family: 'JetBrains Mono', monospace;">Isolated Chromium Virtual Stepping Active</div>
+              </div>
+            </div>
+            <div class="mockup-timeline">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; color: #94a3b8; font-weight: 600;">
+                <span>MASTER TIMELINE: 32.00s</span>
+                <span style="color: #38bdf8;">1920x1080 @ 60 FPS</span>
+              </div>
+              <div class="mockup-track">
+                <div class="mockup-track-fill" id="track-fill"></div>
+                <div class="waveform-bars">
+                  <div class="wave-bar" style="height: 18px;"></div>
+                  <div class="wave-bar" style="height: 24px;"></div>
+                  <div class="wave-bar" style="height: 12px;"></div>
+                  <div class="wave-bar" style="height: 26px;"></div>
+                  <div class="wave-bar" style="height: 16px;"></div>
+                  <div class="wave-bar" style="height: 22px;"></div>
+                  <div class="wave-bar" style="height: 28px;"></div>
+                  <div class="wave-bar" style="height: 14px;"></div>
+                  <div class="wave-bar" style="height: 20px;"></div>
+                  <div class="wave-bar" style="height: 25px;"></div>
+                  <div class="wave-bar" style="height: 15px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 4: 100% Offline & GPU (20.0s - 26.0s) -->
+    <div class="scene" id="scene-4">
+      <div class="chip-container">
+        <div class="chip-circuit"></div>
+        <div class="chip-core">
+          <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.8">
+            <rect x="4" y="4" width="16" height="16" rx="2"/>
+            <rect x="9" y="9" width="6" height="6"/>
+            <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/>
+          </svg>
+        </div>
+      </div>
+      <h2 class="offline-title">১০০% <span>অফলাইন এবং নিরাপদ</span></h2>
+      <p class="offline-desc">
+        কোনো ক্লাউড সার্ভার বা অ্যাকাউন্ট ছাড়াই আপনার লোকাল পিসিতে FFmpeg ও GPU এক্সিলারেশন দিয়ে সরাসরি রেন্ডার করুন।
+      </p>
+      <div class="offline-badges">
+        <div class="sec-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          100% Private & Local
+        </div>
+        <div class="sec-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          GPU Hardware Accelerated
+        </div>
+        <div class="sec-badge">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          Zero Render Limits
+        </div>
+      </div>
+    </div>
+
+    <!-- SCENE 5: Call to Action & Download (26.0s - 32.0s) -->
+    <div class="scene" id="scene-5">
+      <div class="cta-logo">
+        <svg width="60" height="60" viewBox="0 0 48 48" fill="none">
+          <path d="M16 14L8 24L16 34" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+          <path d="M32 14L40 24L32 34" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round"/>
+          <polygon points="21,17 31,24 21,31" fill="#38bdf8"/>
+        </svg>
+      </div>
+      <h2 class="cta-title">Start Creating <span>Today</span></h2>
+      <p class="cta-subtitle">আপনার প্রিয় অপারেটিং সিস্টেমের জন্য এখনই ফ্রিতে ডাউনলোড করুন</p>
+      
+      <div class="platform-cards">
+        <div class="platform-card">
+          <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.63-.78 1.06-1.87.94-2.97-1 .04-2.18.67-2.83 1.44-.58.67-1.09 1.77-.96 2.83 1.12.09 2.22-.52 2.85-1.3z"/></svg>
+          <div class="p-name">macOS</div>
+          <div class="p-spec">Apple Silicon & Intel</div>
+        </div>
+        <div class="platform-card">
+          <svg viewBox="0 0 24 24"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.95-1.801"/></svg>
+          <div class="p-name">Windows</div>
+          <div class="p-spec">64-bit EXE Installer</div>
+        </div>
+        <div class="platform-card">
+          <svg viewBox="0 0 24 24"><path d="M12.012 0C5.388 0 0 5.388 0 12.012c0 5.304 3.438 9.8 8.207 11.387.6.111.82-.261.82-.577v-2.234c-3.338.726-4.043-1.416-4.043-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.218.694.825.576 4.765-1.589 8.199-6.084 8.199-11.386 0-6.624-5.389-12.012-12.013-12.012z"/></svg>
+          <div class="p-name">Linux</div>
+          <div class="p-spec">AppImage & Tarball</div>
+        </div>
+      </div>
+
+      <div class="dev-credit-pill">
+        <span>Designed & Developed by <span class="author">TA Shanto</span></span>
+        <span style="opacity: 0.4;">|</span>
+        <span>tashanto.com</span>
+      </div>
+    </div>
+
+    <!-- SUBTITLE BAR (Bottom of video) -->
+    <div id="subtitle-container">
+      <div id="subtitle-box">
+        <div id="subtitle-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+      ===============================================================
+      HTML MOTION STUDIO ENGINE - DETERMINISTIC TIMELINE SCRIPT
+      Pure math calculations - 0ms to 32,000ms
+      ===============================================================
+    */
+    const DURATION = 32.0; // 32 seconds total
+
+    // Subtitles dataset (Bangla voiceover synchronized)
+    const SUBTITLES = [
+      { start: 0.0, end: 5.8, text: "ওয়েব কোড থেকে <span class='highlight'>হাই-কোয়ালিটি 60 FPS ভিডিও</span> বানানো কি ঝামেলার মনে হয়?" },
+      { start: 6.0, end: 12.8, text: "পরিচয় করিয়ে দিচ্ছি <span class='highlight'>HTML Motion Studio</span> — ওয়েব কোডকে সরাসরি 4K MP4 ভিডিওতে রূপান্তর করার আলটিমেট টুল!" },
+      { start: 13.0, end: 19.8, text: "পারফেক্ট <span class='highlight'>৬০ FPS ফ্রেম স্টেপিং</span>, সাউন্ডট্র্যাক অডিও সিঙ্ক এবং 16:9 ও 9:16 রিলস সাপোর্ট।" },
+      { start: 20.0, end: 25.8, text: "<span class='highlight'>১০০% লোকাল এবং অফলাইন</span> — কোনো ক্লাউড ফি নেই, আপনার ডেটা ফুল প্রাইভেট ও জিপিইউ এক্সিলারেটেড।" },
+      { start: 26.0, end: 32.0, text: "আজই ডাউনলোড করুন <span class='highlight'>Mac, Windows ও Linux</span>-এর জন্য। Crafted with passion by TA Shanto!" }
+    ];
+
+    // Responsive stage scaling for window preview
+    function resizeStage() {
+      const stage = document.getElementById('stage');
+      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      stage.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', resizeStage);
+    resizeStage();
+
+    // Canvas Particles Setup
+    const canvas = document.getElementById('particles-canvas');
+    const ctx = canvas.getContext('2d');
+    const PARTICLE_COUNT = 90;
+    const particles = [];
+
+    // Deterministic pseudo-random seed
+    function pseudoRandom(seed) {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    }
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push({
+        baseX: pseudoRandom(i * 13.37) * 1920,
+        baseY: pseudoRandom(i * 47.91) * 1080,
+        speedX: (pseudoRandom(i * 91.13) - 0.5) * 40,
+        speedY: (pseudoRandom(i * 17.77) - 0.5) * 40,
+        radius: 1.5 + pseudoRandom(i * 3.14) * 2.5,
+        alpha: 0.2 + pseudoRandom(i * 7.77) * 0.5,
+        hue: pseudoRandom(i * 5.55) > 0.5 ? 210 : 270 // Blue or violet
+      });
+    }
+
+    // Easing helpers
+    function easeOutCubic(x) {
+      return 1 - Math.pow(1 - Math.min(Math.max(x, 0), 1), 3);
+    }
+
+    function easeInOutQuad(x) {
+      x = Math.min(Math.max(x, 0), 1);
+      return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    }
+
+    function easeOutBack(x) {
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      x = Math.min(Math.max(x, 0), 1);
+      return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+    }
+
+    // DOM Elements
+    const scene1 = document.getElementById('scene-1');
+    const scene2 = document.getElementById('scene-2');
+    const scene3 = document.getElementById('scene-3');
+    const scene4 = document.getElementById('scene-4');
+    const scene5 = document.getElementById('scene-5');
+    const subtitleText = document.getElementById('subtitle-text');
+    const subtitleBox = document.getElementById('subtitle-box');
+    const renderProgress = document.getElementById('render-progress');
+    const card1 = document.getElementById('c1');
+    const card2 = document.getElementById('c2');
+    const mockup = document.getElementById('mockup');
+    const trackFill = document.getElementById('track-fill');
+
+    // MASTER DETERMINISTIC RENDER FUNCTION (CALLED PER FRAME AT TIME t)
+    function renderAtTime(t) {
+      // Loop or clamp t
+      t = Math.max(0, Math.min(t, DURATION));
+
+      // 1. Progress bar
+      renderProgress.style.width = `${(t / DURATION) * 100}%`;
+
+      // 2. Background Canvas Particles
+      ctx.clearRect(0, 0, 1920, 1080);
+      particles.forEach((p) => {
+        const x = (p.baseX + p.speedX * t) % 1920;
+        const curX = x < 0 ? x + 1920 : x;
+        const y = (p.baseY + p.speedY * t) % 1080;
+        const curY = y < 0 ? y + 1080 : y;
+
+        ctx.beginPath();
+        ctx.arc(curX, curY, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${p.hue}, 80%, 70%, ${p.alpha})`;
+        ctx.fill();
+      });
+
+      // 3. Subtitles
+      let activeSub = null;
+      for (const s of SUBTITLES) {
+        if (t >= s.start && t < s.end) {
+          activeSub = s;
+          break;
+        }
+      }
+
+      if (activeSub) {
+        subtitleText.innerHTML = activeSub.text;
+        subtitleBox.style.opacity = '1';
+        subtitleBox.style.transform = 'translateY(0)';
+      } else {
+        subtitleBox.style.opacity = '0';
+        subtitleBox.style.transform = 'translateY(15px)';
+      }
+
+      // 4. SCENE 1: 0.0s - 6.0s
+      if (t >= 0 && t < 6.0) {
+        const fadeIn = easeOutCubic(t / 0.8);
+        const fadeOut = t > 5.2 ? 1 - easeInOutQuad((t - 5.2) / 0.8) : 1;
+        const op = Math.max(0, Math.min(fadeIn * fadeOut, 1));
+        const scale = 0.94 + 0.06 * easeOutCubic(t / 1.2);
+        
+        scene1.style.opacity = op;
+        scene1.style.transform = `scale(${scale})`;
+
+        // Floating cards
+        const c1Offset = Math.sin(t * 2) * 12;
+        const c2Offset = Math.cos(t * 2.2) * 14;
+        card1.style.transform = `translateY(${c1Offset}px) rotate(-4deg)`;
+        card2.style.transform = `translateY(${c2Offset}px) rotate(3deg)`;
+      } else {
+        scene1.style.opacity = '0';
+      }
+
+      // 5. SCENE 2: 6.0s - 13.0s
+      if (t >= 5.8 && t < 13.0) {
+        const localT = t - 6.0;
+        const fadeIn = easeOutCubic(localT / 0.8);
+        const fadeOut = localT > 6.2 ? 1 - easeInOutQuad((localT - 6.2) / 0.8) : 1;
+        const op = Math.max(0, Math.min(fadeIn * fadeOut, 1));
+        const scale = 0.92 + 0.08 * easeOutBack(Math.min(localT / 1.0, 1));
+
+        scene2.style.opacity = op;
+        scene2.style.transform = `scale(${scale})`;
+      } else {
+        scene2.style.opacity = '0';
+      }
+
+      // 6. SCENE 3: 13.0s - 20.0s
+      if (t >= 12.8 && t < 20.0) {
+        const localT = t - 13.0;
+        const fadeIn = easeOutCubic(localT / 0.8);
+        const fadeOut = localT > 6.2 ? 1 - easeInOutQuad((localT - 6.2) / 0.8) : 1;
+        const op = Math.max(0, Math.min(fadeIn * fadeOut, 1));
+        const scale = 0.94 + 0.06 * easeOutCubic(localT / 1.0);
+
+        scene3.style.opacity = op;
+        scene3.style.transform = `scale(${scale})`;
+
+        // Dynamic 3D tilt on mockup
+        const rotY = -8 + Math.sin(localT * 1.5) * 3;
+        const rotX = 4 + Math.cos(localT * 1.5) * 2;
+        mockup.style.transform = `perspective(1000px) rotateY(${rotY}deg) rotateX(${rotX}deg)`;
+
+        // Timeline progress fill simulation
+        const trackPercent = (localT / 7.0) * 100;
+        trackFill.style.width = `${trackPercent}%`;
+      } else {
+        scene3.style.opacity = '0';
+      }
+
+      // 7. SCENE 4: 20.0s - 26.0s
+      if (t >= 19.8 && t < 26.0) {
+        const localT = t - 20.0;
+        const fadeIn = easeOutCubic(localT / 0.8);
+        const fadeOut = localT > 5.2 ? 1 - easeInOutQuad((localT - 5.2) / 0.8) : 1;
+        const op = Math.max(0, Math.min(fadeIn * fadeOut, 1));
+        const scale = 0.95 + 0.05 * easeOutCubic(localT / 1.0);
+
+        scene4.style.opacity = op;
+        scene4.style.transform = `scale(${scale})`;
+      } else {
+        scene4.style.opacity = '0';
+      }
+
+      // 8. SCENE 5: 26.0s - 32.0s
+      if (t >= 25.8 && t <= 32.0) {
+        const localT = t - 26.0;
+        const fadeIn = easeOutCubic(localT / 0.8);
+        const op = Math.max(0, Math.min(fadeIn, 1));
+        const scale = 0.95 + 0.05 * easeOutBack(Math.min(localT / 1.0, 1));
+
+        scene5.style.opacity = op;
+        scene5.style.transform = `scale(${scale})`;
+      } else if (t < 25.8) {
+        scene5.style.opacity = '0';
+      }
+    }
+
+    // ===============================================================
+    // STRATEGY A: HTML MOTION STUDIO DETERMINISTIC ADAPTER HOOK
+    // ===============================================================
+    let isVirtualStepping = false;
+
+    window.__HTML_MOTION_STUDIO__ = {
+      duration: DURATION,
+      seek: async function(timeSeconds) {
+        isVirtualStepping = true;
+        renderAtTime(timeSeconds);
+      },
+      renderFrame: async function(timeSeconds) {
+        renderAtTime(timeSeconds);
+      }
+    };
+
+    // Standard Real-time Animation Loop for In-Browser Testing/Preview
+    let startTime = null;
+
+    function animateRealtime(timestamp) {
+      if (!isVirtualStepping) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = (timestamp - startTime) / 1000;
+        const t = elapsed % DURATION;
+        renderAtTime(t);
+      }
+      requestAnimationFrame(animateRealtime);
+    }
+
+    // Start preview loop
+    requestAnimationFrame(animateRealtime);
+  </script>
+</body>
+</html>
