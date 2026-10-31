@@ -292,20 +292,24 @@ export const AssetsSidebar: React.FC<AssetsSidebarProps> = ({ onOpenCodeEditor }
           {expandedSections.audio && (
             <div className="mt-1.5 pl-4 space-y-2">
               {audioFilePath ? (
-                <div className="p-2 rounded-xl bg-purple-950/30 border border-purple-500/30 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-purple-200 truncate flex items-center gap-1">
-                      <Music className="w-3 h-3 text-purple-400" />
-                      {audioSettings.fileName || 'Soundtrack'}
-                    </span>
+                <div className="p-2.5 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-1.5 overflow-hidden">
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <Music className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                      <span className="font-semibold text-purple-200 truncate text-[11px]" title={audioSettings.fileName || 'Soundtrack'}>
+                        {audioSettings.fileName || 'Soundtrack'}
+                      </span>
+                    </div>
                     <button
                       onClick={clearAudio}
-                      className="text-[10px] text-red-400 hover:text-red-300"
+                      className="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-500/10 transition shrink-0 font-medium"
+                      title="Remove soundtrack audio"
+                      aria-label="Remove soundtrack audio"
                     >
                       Remove
                     </button>
                   </div>
-                  <div className="text-[10px] text-slate-400 font-mono truncate">
+                  <div className="text-[10px] text-slate-400 font-mono truncate" title={audioFilePath}>
                     {audioFilePath}
                   </div>
                 </div>

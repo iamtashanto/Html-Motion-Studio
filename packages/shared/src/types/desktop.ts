@@ -88,6 +88,9 @@ export interface DesktopApiBridge {
   removeRecentProject: (id: string) => Promise<void>;
   clearRecentProjects: () => Promise<void>;
 
+  // Audio
+  getAudioDataUrl?: (filePath: string) => Promise<string>;
+
   // Rendering & Export
   startExport: (config: DesktopExportJobConfig) => Promise<{ success: boolean; outputFilePath: string }>;
   cancelExport: () => Promise<{ success: boolean }>;

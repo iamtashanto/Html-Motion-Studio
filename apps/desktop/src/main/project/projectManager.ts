@@ -10,12 +10,40 @@ const MAX_DEPTH = 8;
 
 export class ProjectManager {
   private tempWorkspacesDir: string;
+  private activeProjectPaths = new Map<string, string>();
+  private latestActiveRenderPath: string | undefined;
 
   constructor(userDataPath: string) {
     this.tempWorkspacesDir = path.join(userDataPath, 'workspaces');
     if (!fs.existsSync(this.tempWorkspacesDir)) {
       fs.mkdirSync(this.tempWorkspacesDir, { recursive: true });
     }
+  }
+
+  public getRenderHtmlPath(projectId: string): string | undefined {
+    return this.activeProjectPaths.get(projectId) || this.latestActiveRenderPath;
+  }
+
+  public getLatestActiveRenderPath(): string | undefined {
+    return this.latestActiveRenderPath;
+  }
+
+  public getAudioDataUrl(filePath: string): string {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Audio file not found at path: ${filePath}`);
+    }
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      '.mp3': 'audio/mpeg',
+      '.wav': 'audio/wav',
+      '.aac': 'audio/aac',
+      '.m4a': 'audio/mp4',
+      '.ogg': 'audio/ogg',
+      '.flac': 'audio/flac',
+    };
+    const mime = mimeMap[ext] || 'audio/mpeg';
+    const buffer = fs.readFileSync(filePath);
+    return `data:${mime};base64,${buffer.toString('base64')}`;
   }
 
   public async openFromPath(targetPath: string): Promise<ProjectData> {
@@ -89,8 +117,12 @@ export class ProjectManager {
       fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
     } catch {}
 
+    const id = `file-${Date.now()}`;
+    this.activeProjectPaths.set(id, activeRenderPath);
+    this.latestActiveRenderPath = activeRenderPath;
+
     return {
-      id: `file-${Date.now()}`,
+      id,
       title,
       mode: 'file',
       htmlContent: rewrittenHtml,
@@ -180,8 +212,12 @@ export class ProjectManager {
       fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
     } catch {}
 
+    const id = `zip-${Date.now()}`;
+    this.activeProjectPaths.set(id, activeRenderPath);
+    this.latestActiveRenderPath = activeRenderPath;
+
     return {
-      id: `zip-${Date.now()}`,
+      id,
       title,
       mode: 'zip',
       htmlContent: rewrittenHtml,
@@ -277,8 +313,12 @@ export class ProjectManager {
       fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
     } catch {}
 
+    const id = `folder-${Date.now()}`;
+    this.activeProjectPaths.set(id, activeRenderPath);
+    this.latestActiveRenderPath = activeRenderPath;
+
     return {
-      id: `folder-${Date.now()}`,
+      id,
       title,
       mode: 'file',
       htmlContent: rewrittenHtml,
@@ -303,6 +343,8 @@ export class ProjectManager {
     try {
       fs.writeFileSync(activeRenderPath, parsed.htmlContent, 'utf-8');
       parsed.renderHtmlPath = activeRenderPath;
+      this.activeProjectPaths.set(parsed.id, activeRenderPath);
+      this.latestActiveRenderPath = activeRenderPath;
     } catch {}
 
     return parsed as ProjectData;
@@ -318,6 +360,7 @@ export class ProjectManager {
   public syncRenderHtml(htmlContent: string): { success: boolean; renderHtmlPath: string } {
     const renderHtmlPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_workspace.html`);
     fs.writeFileSync(renderHtmlPath, htmlContent || '<html><body></body></html>', 'utf-8');
+    this.latestActiveRenderPath = renderHtmlPath;
     return { success: true, renderHtmlPath };
   }
 

@@ -26,9 +26,13 @@ const desktopApi: DesktopApiBridge = {
     ipcRenderer.invoke('project:removeRecentProject', id),
   clearRecentProjects: () => ipcRenderer.invoke('project:clearRecentProjects'),
 
+  // Audio
+  getAudioDataUrl: (filePath: string) =>
+    ipcRenderer.invoke('audio:getAudioDataUrl', filePath),
+
   // Rendering & Export
   startExport: (config: DesktopExportJobConfig) =>
-    ipcRenderer.invoke('render:startExport', JSON.parse(JSON.stringify(config))),
+    ipcRenderer.invoke('render:startExport', config),
   cancelExport: () => ipcRenderer.invoke('render:cancelExport'),
   verifyExportedVideo: (filePath: string) =>
     ipcRenderer.invoke('render:verifyExportedVideo', filePath),

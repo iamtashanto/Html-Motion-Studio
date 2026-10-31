@@ -111,9 +111,17 @@ export function registerIpcHandlers(
     projectDb.clearRecentProjects();
   });
 
+  // Audio Data URL for Preview Playback
+  ipcMain.handle('audio:getAudioDataUrl', async (_, filePath: string) => {
+    return projectManager.getAudioDataUrl(filePath);
+  });
+
   // Rendering & Export
   ipcMain.handle('render:startExport', async (_, config: DesktopExportJobConfig) => {
     try {
+      if (!config.project.renderHtmlPath) {
+        config.project.renderHtmlPath = projectManager.getRenderHtmlPath(config.project.id);
+      }
       const outputFilePath = await headlessRenderer.renderProject(config, (progress) => {
         if (!mainWindow.isDestroyed()) {
           mainWindow.webContents.send('render:progress', progress);

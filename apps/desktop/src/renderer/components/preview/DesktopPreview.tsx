@@ -117,6 +117,8 @@ export const DesktopPreview: React.FC = () => {
     previewBackground,
     previewKey,
     exportSettings,
+    audioSettings,
+    audioDataUrl,
     setIsPlaying,
     setCurrentTime,
     seek,
@@ -129,6 +131,7 @@ export const DesktopPreview: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(performance.now());
   const timeRef = useRef<number>(currentTime);
@@ -157,18 +160,52 @@ export const DesktopPreview: React.FC = () => {
     } catch {}
   }, []);
 
-  // Sync external scrubbing/seeks into timeRef and iframe
+  // Sync external scrubbing/seeks into timeRef, iframe, and audio element
   useEffect(() => {
     if (!isPlaying || Math.abs(currentTime - timeRef.current) > 0.05) {
       timeRef.current = currentTime;
       sendSeekToIframe(currentTime, isPlaying);
+      if (audioRef.current && audioDataUrl) {
+        const offset = audioSettings.startOffsetSeconds || 0;
+        const trimIn = audioSettings.trimInSeconds || 0;
+        const targetAudioTime = Math.max(0, currentTime - offset + trimIn);
+        audioRef.current.currentTime = targetAudioTime;
+        if (currentTime < offset) {
+          audioRef.current.pause();
+        } else if (isPlaying && audioRef.current.paused) {
+          audioRef.current.play().catch(() => {});
+        }
+      }
     }
-  }, [currentTime, isPlaying, sendSeekToIframe]);
+  }, [currentTime, isPlaying, sendSeekToIframe, audioDataUrl, audioSettings.startOffsetSeconds, audioSettings.trimInSeconds]);
 
-  // Sync play/pause state into iframe
+  // Sync play/pause state into iframe and audio
   useEffect(() => {
     sendSeekToIframe(timeRef.current, isPlaying);
-  }, [isPlaying, sendSeekToIframe]);
+    if (audioRef.current && audioDataUrl) {
+      if (isPlaying) {
+        const offset = audioSettings.startOffsetSeconds || 0;
+        const trimIn = audioSettings.trimInSeconds || 0;
+        const targetAudioTime = Math.max(0, timeRef.current - offset + trimIn);
+        audioRef.current.currentTime = targetAudioTime;
+        audioRef.current.volume = Math.max(0, Math.min(1, audioSettings.volume ?? 1));
+        if (timeRef.current >= offset) {
+          audioRef.current.play().catch(() => {});
+        } else {
+          audioRef.current.pause();
+        }
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying, sendSeekToIframe, audioDataUrl, audioSettings.startOffsetSeconds, audioSettings.trimInSeconds, audioSettings.volume]);
+
+  // Sync audio volume
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = Math.max(0, Math.min(1, audioSettings.volume ?? 1));
+    }
+  }, [audioSettings.volume]);
 
   // Measure stage dimensions for responsive viewport fitting
   useEffect(() => {
@@ -226,6 +263,25 @@ export const DesktopPreview: React.FC = () => {
 
       sendSeekToIframe(nextTime, true);
 
+      // Keep audio synchronized during playback loop
+      if (audioRef.current && audioDataUrl) {
+        const offset = audioSettings.startOffsetSeconds || 0;
+        const trimIn = audioSettings.trimInSeconds || 0;
+        if (nextTime < offset) {
+          if (!audioRef.current.paused) audioRef.current.pause();
+        } else {
+          if (audioRef.current.paused) {
+            audioRef.current.currentTime = Math.max(0, nextTime - offset + trimIn);
+            audioRef.current.play().catch(() => {});
+          } else {
+            const expected = nextTime - offset + trimIn;
+            if (Math.abs(audioRef.current.currentTime - expected) > 0.25) {
+              audioRef.current.currentTime = Math.max(0, expected);
+            }
+          }
+        }
+      }
+
       if (isPlaying) {
         animFrameRef.current = requestAnimationFrame(loop);
       }
@@ -236,7 +292,17 @@ export const DesktopPreview: React.FC = () => {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying, exportSettings.durationSeconds, exportSettings.loopAnimationIfShorter, setCurrentTime, setIsPlaying, sendSeekToIframe]);
+  }, [
+    isPlaying,
+    exportSettings.durationSeconds,
+    exportSettings.loopAnimationIfShorter,
+    setCurrentTime,
+    setIsPlaying,
+    sendSeekToIframe,
+    audioDataUrl,
+    audioSettings.startOffsetSeconds,
+    audioSettings.trimInSeconds,
+  ]);
 
   // Background style helper
   const bgClasses = {
@@ -391,6 +457,16 @@ export const DesktopPreview: React.FC = () => {
             className={`w-full h-full border-0 ${isResizing ? 'pointer-events-none' : 'pointer-events-auto'}`}
           />
         </div>
+
+        {/* Hidden Synchronized HTML5 Audio Element */}
+        {audioDataUrl && (
+          <audio
+            ref={audioRef}
+            src={audioDataUrl}
+            preload="auto"
+            className="hidden"
+          />
+        )}
       </div>
 
       {/* Bottom Transport Controls */}

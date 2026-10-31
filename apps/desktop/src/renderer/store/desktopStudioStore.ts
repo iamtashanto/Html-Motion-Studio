@@ -30,6 +30,7 @@ export interface DesktopStudioState {
   // Audio Configuration
   audioSettings: AudioSettings;
   audioFilePath: string | null;
+  audioDataUrl: string | null;
 
   // Export Settings
   exportSettings: ExportSettings;
@@ -139,6 +140,7 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
       fadeOutSeconds: 0.5,
     },
     audioFilePath: null,
+    audioDataUrl: null,
 
     exportSettings: {
       aspectRatio: '16:9',
@@ -388,9 +390,18 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
       if (!res.canceled && res.filePaths[0]) {
         const filePath = res.filePaths[0];
         const fileName = filePath.split(/[/\\]/).pop() || 'soundtrack';
+        let audioDataUrl: string | null = null;
+        if (window.desktopApi.getAudioDataUrl) {
+          try {
+            audioDataUrl = await window.desktopApi.getAudioDataUrl(filePath);
+          } catch (e) {
+            console.error('Failed to get audio data URL:', e);
+          }
+        }
 
         set((state) => ({
           audioFilePath: filePath,
+          audioDataUrl,
           audioSettings: {
             ...state.audioSettings,
             sourceMode: 'external',
@@ -404,6 +415,7 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
     clearAudio: () => {
       set((state) => ({
         audioFilePath: null,
+        audioDataUrl: null,
         audioSettings: {
           ...state.audioSettings,
           sourceMode: 'none',
@@ -531,9 +543,10 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
       try {
         // Guarantee zero-IPC overhead by caching HTML to local temp file if renderHtmlPath not yet set
         let effectiveRenderHtmlPath = project.renderHtmlPath;
-        if (!effectiveRenderHtmlPath && window.desktopApi?.syncRenderHtml) {
+        // If it's a code-edited project with no renderHtmlPath, sync to disk
+        if (!effectiveRenderHtmlPath && project.mode === 'code' && project.htmlContent && window.desktopApi?.syncRenderHtml) {
           try {
-            const syncRes = await window.desktopApi.syncRenderHtml(project.htmlContent || '');
+            const syncRes = await window.desktopApi.syncRenderHtml(project.htmlContent);
             if (syncRes?.renderHtmlPath) {
               effectiveRenderHtmlPath = syncRes.renderHtmlPath;
               set((state) => ({
@@ -553,7 +566,7 @@ export const useDesktopStudioStore = create<DesktopStudioState>((set, get) => {
               title: project.title || 'Untitled',
               mode: project.mode || 'file',
               // Never pass massive inlined base64 HTML string over Chromium IPC
-              htmlContent: effectiveRenderHtmlPath ? '' : (project.htmlContent || ''),
+              htmlContent: '',
               renderHtmlPath: effectiveRenderHtmlPath || undefined,
               entryHtmlPath: project.entryHtmlPath || 'index.html',
               availableHtmlFiles: project.availableHtmlFiles || ['index.html'],
