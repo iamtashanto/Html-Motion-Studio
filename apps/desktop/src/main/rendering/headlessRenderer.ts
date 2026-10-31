@@ -49,7 +49,7 @@ export class HeadlessRenderer {
     });
 
     try {
-      // 1. Create hidden offscreen BrowserWindow
+      // 1. Create hidden offscreen BrowserWindow with unthrottled background rendering
       this.renderWindow = new BrowserWindow({
         width: settings.width,
         height: settings.height,
@@ -59,9 +59,10 @@ export class HeadlessRenderer {
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
-          sandbox: true,
-          offscreen: false, // hidden window with capturePage works reliably across platforms
+          sandbox: false,
+          backgroundThrottling: false, // Critical: do not throttle animations/rendering when window is hidden
           webgl: true,
+          autoplayPolicy: 'no-user-gesture-required',
         },
       });
 
@@ -79,40 +80,93 @@ export class HeadlessRenderer {
         fs.writeFileSync(tempEntryPath, project.htmlContent || '<html><body></body></html>', 'utf-8');
       }
 
-      await Promise.race([
-        this.renderWindow.loadFile(tempEntryPath),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Chromium page load timed out after 20 seconds.')), 20000)
-        ),
-      ]);
+      // Fast, non-blocking page load (resolves on dom-ready or at most 5s safety ceiling)
+      await new Promise<void>((resolve) => {
+        let isDone = false;
+        const done = () => {
+          if (!isDone) {
+            isDone = true;
+            resolve();
+          }
+        };
 
-      // Inject deterministic clock hook if compatibility mode
+        this.renderWindow?.webContents.once('dom-ready', () => {
+          setTimeout(done, 300);
+        });
+
+        this.renderWindow?.webContents.once('did-finish-load', done);
+
+        this.renderWindow?.webContents.once('did-fail-load', (e, code, desc) => {
+          if (code !== -3) {
+            console.warn(`Render frame load notice: ${desc} (${code})`);
+            done();
+          }
+        });
+
+        setTimeout(done, 5000);
+
+        this.renderWindow?.loadFile(tempEntryPath).catch(() => {
+          done();
+        });
+      });
+
+      // Inject deterministic clock hook supporting Strategy A and Strategy B
       await this.renderWindow.webContents.executeJavaScript(`
         window.__HMS_VIRTUAL_TIME__ = 0;
         window.__HMS_SEEK__ = async function(timeSeconds) {
           window.__HMS_VIRTUAL_TIME__ = timeSeconds;
           
-          // Check Strategy A adapter
+          // 1. Strategy A adapter (window.__HTML_MOTION_STUDIO__)
           if (window.__HTML_MOTION_STUDIO__ && typeof window.__HTML_MOTION_STUDIO__.seek === 'function') {
-            await window.__HTML_MOTION_STUDIO__.seek(timeSeconds);
-            if (typeof window.__HTML_MOTION_STUDIO__.renderFrame === 'function') {
-              await window.__HTML_MOTION_STUDIO__.renderFrame(timeSeconds);
-            }
-            return;
+            try {
+              await window.__HTML_MOTION_STUDIO__.seek(timeSeconds);
+              if (typeof window.__HTML_MOTION_STUDIO__.renderFrame === 'function') {
+                await window.__HTML_MOTION_STUDIO__.renderFrame(timeSeconds);
+              }
+              return;
+            } catch (e) {}
           }
 
-          // Strategy B fallback: Seek media & CSS animations
+          // 2. Custom seek functions
+          if (typeof window.renderAtTime === 'function') {
+            try { window.renderAtTime(timeSeconds); } catch (e) {}
+          }
+          if (typeof window.seek === 'function') {
+            try { window.seek(timeSeconds); } catch (e) {}
+          }
+          if (typeof window.seekTo === 'function') {
+            try { window.seekTo(timeSeconds); } catch (e) {}
+          }
+
+          // 3. PostMessage broadcast
+          try {
+            window.postMessage({ type: 'HMS_SEEK', time: timeSeconds, isPlaying: false }, '*');
+          } catch (e) {}
+
+          // 4. CSS animations
           const animations = document.getAnimations ? document.getAnimations() : [];
           for (const anim of animations) {
-            anim.currentTime = timeSeconds * 1000;
+            try {
+              anim.currentTime = timeSeconds * 1000;
+              anim.pause();
+            } catch (e) {}
           }
 
+          // 5. HTML5 video elements
           const videos = document.querySelectorAll('video');
           for (const vid of videos) {
-            vid.currentTime = timeSeconds;
+            try {
+              vid.currentTime = timeSeconds;
+              vid.pause();
+            } catch (e) {}
           }
         };
       `);
+
+      // Prime frame at 0.0s
+      try {
+        await this.renderWindow.webContents.executeJavaScript(`window.__HMS_SEEK__(0)`);
+      } catch {}
 
       // 3. Inspect if Strategy A is detected
       const hasAdapter = await this.renderWindow.webContents.executeJavaScript(`

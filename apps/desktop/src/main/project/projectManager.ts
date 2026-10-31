@@ -79,47 +79,85 @@ export class ProjectManager {
     const title = fileName.replace(/\.[^/.]+$/, '');
     const dir = path.dirname(filePath);
 
-    // Look for sibling assets in the same directory (CSS, JS, images)
+    // Scan rawContent ONLY for explicitly referenced relative local assets (src="...", href="...", url("..."))
+    // NEVER blindly readdir the entire directory (especially if it is Downloads or Desktop!)
     const assets: Record<string, ProjectAsset> = {};
     const missingAssets: string[] = [];
 
-    try {
-      const siblingFiles = fs.readdirSync(dir);
-      for (const item of siblingFiles) {
-        if (item === fileName || item.startsWith('.')) continue;
-        const itemPath = path.join(dir, item);
-        const itemStat = fs.statSync(itemPath);
-        if (itemStat.isFile() && itemStat.size <= MAX_SINGLE_FILE_SIZE) {
-          const mime = this.detectMimeType(item);
-          const buffer = fs.readFileSync(itemPath);
-          const base64 = buffer.toString('base64');
-          const dataUri = `data:${mime};base64,${base64}`;
+    const relativeMatches = rawContent.matchAll(/(?:src|href)=["']([^"':#?]+)["']|url\(\s*["']?([^"'():#?]+)["']?\s*\)/gi);
+    const referencedPaths = new Set<string>();
 
-          assets[item] = {
-            path: item,
-            name: item,
-            type: mime,
-            size: itemStat.size,
-            blobUrl: dataUri,
-            content: mime.startsWith('text/') || mime.includes('javascript') || mime.includes('svg')
-              ? buffer.toString('utf-8')
-              : undefined,
-          };
-        }
+    for (const m of relativeMatches) {
+      const ref = (m[1] || m[2] || '').trim();
+      if (
+        !ref ||
+        ref.startsWith('http:') ||
+        ref.startsWith('https:') ||
+        ref.startsWith('//') ||
+        ref.startsWith('data:') ||
+        ref.startsWith('blob:') ||
+        ref.startsWith('#')
+      ) {
+        continue;
       }
-    } catch {
-      // Sibling scan is best-effort
+      referencedPaths.add(ref);
     }
 
-    const rewrittenHtml = this.rewriteAssetReferences(rawContent, assets);
+    // Only load files that are explicitly referenced in the HTML
+    for (const ref of referencedPaths) {
+      try {
+        const itemPath = path.resolve(dir, ref);
+        if (fs.existsSync(itemPath) && fs.statSync(itemPath).isFile()) {
+          const itemStat = fs.statSync(itemPath);
+          if (itemStat.size <= MAX_SINGLE_FILE_SIZE) {
+            const mime = this.detectMimeType(itemPath);
+            const buffer = fs.readFileSync(itemPath);
+            const base64 = buffer.toString('base64');
+            const dataUri = `data:${mime};base64,${base64}`;
+
+            assets[ref] = {
+              path: ref,
+              name: path.basename(ref),
+              type: mime,
+              size: itemStat.size,
+              blobUrl: dataUri,
+              content: mime.startsWith('text/') || mime.includes('javascript') || mime.includes('svg')
+                ? buffer.toString('utf-8')
+                : undefined,
+            };
+          }
+        } else {
+          missingAssets.push(ref);
+        }
+      } catch {
+        // Skip inaccessible referenced files
+      }
+    }
+
+    const rewrittenHtml = Object.keys(assets).length > 0
+      ? this.rewriteAssetReferences(rawContent, assets)
+      : rawContent;
+
     const activeRenderPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_single.html`);
     try {
       fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
-    } catch {}
+    } catch { }
 
     const id = `file-${Date.now()}`;
     this.activeProjectPaths.set(id, activeRenderPath);
     this.latestActiveRenderPath = activeRenderPath;
+
+    // Auto-detect animation duration from HTML scripts or metadata
+    let detectedDuration = 4;
+    const durationMatch =
+      rawContent.match(/(?:TOTAL_DURATION|duration|videoDuration|DURATION_SECONDS)\s*[:=]\s*([0-9]+(?:\.[0-9]+)?)/i) ||
+      rawContent.match(/([0-9]+(?:\.[0-9]+)?)\s*s(?:\s*\(|\s*\)| narration| Bengali)/i);
+    if (durationMatch && durationMatch[1]) {
+      const parsed = parseFloat(durationMatch[1]);
+      if (parsed > 0 && parsed <= 300) {
+        detectedDuration = Math.round(parsed * 10) / 10;
+      }
+    }
 
     return {
       id,
@@ -130,7 +168,7 @@ export class ProjectManager {
       entryHtmlPath: fileName,
       availableHtmlFiles: [fileName],
       assets,
-      detectedDuration: 4,
+      detectedDuration,
       missingAssets,
     };
   }
@@ -210,7 +248,7 @@ export class ProjectManager {
     const activeRenderPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_zip.html`);
     try {
       fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
-    } catch {}
+    } catch { }
 
     const id = `zip-${Date.now()}`;
     this.activeProjectPaths.set(id, activeRenderPath);
@@ -311,7 +349,7 @@ export class ProjectManager {
     const activeRenderPath = path.join(this.tempWorkspacesDir, `active_${Date.now()}_folder.html`);
     try {
       fs.writeFileSync(activeRenderPath, rewrittenHtml, 'utf-8');
-    } catch {}
+    } catch { }
 
     const id = `folder-${Date.now()}`;
     this.activeProjectPaths.set(id, activeRenderPath);
@@ -345,7 +383,7 @@ export class ProjectManager {
       parsed.renderHtmlPath = activeRenderPath;
       this.activeProjectPaths.set(parsed.id, activeRenderPath);
       this.latestActiveRenderPath = activeRenderPath;
-    } catch {}
+    } catch { }
 
     return parsed as ProjectData;
   }
