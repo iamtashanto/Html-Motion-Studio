@@ -1,6 +1,6 @@
 appId: com.htmlmotionstudio.desktop
 productName: HTML Motion Studio
-copyright: Copyright © 2026 HTML Motion Studio
+copyright: Copyright © 2026 TA Shanto
 directories:
   output: release
   buildResources: build
@@ -36,6 +36,15 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
 
+appx:
+  applicationId: HTMLMotionStudio
+  identityName: HTMLMotionStudio
+  publisher: CN=HTMLMotionStudio
+  publisherDisplayName: TA Shanto
+  displayName: HTML Motion Studio
+  backgroundColor: "#070a16"
+  showNameOnTiles: true
+
 linux:
   category: Video
   target:
@@ -45,4 +54,3 @@ linux:
     - target: tar.gz
       arch:
         - x64
-
