@@ -110,62 +110,65 @@ export class HeadlessRenderer {
         });
       });
 
-      // Inject deterministic clock hook supporting Strategy A and Strategy B
+      // Inject deterministic clock hook supporting Strategy A and Strategy B (returns boolean primitive true to guarantee structured cloning)
       await this.renderWindow.webContents.executeJavaScript(`
-        window.__HMS_VIRTUAL_TIME__ = 0;
-        window.__HMS_SEEK__ = async function(timeSeconds) {
-          window.__HMS_VIRTUAL_TIME__ = timeSeconds;
-          
-          // 1. Strategy A adapter (window.__HTML_MOTION_STUDIO__)
-          if (window.__HTML_MOTION_STUDIO__ && typeof window.__HTML_MOTION_STUDIO__.seek === 'function') {
+        (function() {
+          window.__HMS_VIRTUAL_TIME__ = 0;
+          window.__HMS_SEEK__ = async function(timeSeconds) {
+            window.__HMS_VIRTUAL_TIME__ = timeSeconds;
+            
+            // 1. Strategy A adapter (window.__HTML_MOTION_STUDIO__)
+            if (window.__HTML_MOTION_STUDIO__ && typeof window.__HTML_MOTION_STUDIO__.seek === 'function') {
+              try {
+                await window.__HTML_MOTION_STUDIO__.seek(timeSeconds);
+                if (typeof window.__HTML_MOTION_STUDIO__.renderFrame === 'function') {
+                  await window.__HTML_MOTION_STUDIO__.renderFrame(timeSeconds);
+                }
+                return;
+              } catch (e) {}
+            }
+
+            // 2. Custom seek functions
+            if (typeof window.renderAtTime === 'function') {
+              try { window.renderAtTime(timeSeconds); } catch (e) {}
+            }
+            if (typeof window.seek === 'function') {
+              try { window.seek(timeSeconds); } catch (e) {}
+            }
+            if (typeof window.seekTo === 'function') {
+              try { window.seekTo(timeSeconds); } catch (e) {}
+            }
+
+            // 3. PostMessage broadcast
             try {
-              await window.__HTML_MOTION_STUDIO__.seek(timeSeconds);
-              if (typeof window.__HTML_MOTION_STUDIO__.renderFrame === 'function') {
-                await window.__HTML_MOTION_STUDIO__.renderFrame(timeSeconds);
-              }
-              return;
+              window.postMessage({ type: 'HMS_SEEK', time: timeSeconds, isPlaying: false }, '*');
             } catch (e) {}
-          }
 
-          // 2. Custom seek functions
-          if (typeof window.renderAtTime === 'function') {
-            try { window.renderAtTime(timeSeconds); } catch (e) {}
-          }
-          if (typeof window.seek === 'function') {
-            try { window.seek(timeSeconds); } catch (e) {}
-          }
-          if (typeof window.seekTo === 'function') {
-            try { window.seekTo(timeSeconds); } catch (e) {}
-          }
+            // 4. CSS animations
+            var anims = document.getAnimations ? document.getAnimations() : [];
+            for (var i = 0; i < anims.length; i++) {
+              try {
+                anims[i].currentTime = timeSeconds * 1000;
+                anims[i].pause();
+              } catch (e) {}
+            }
 
-          // 3. PostMessage broadcast
-          try {
-            window.postMessage({ type: 'HMS_SEEK', time: timeSeconds, isPlaying: false }, '*');
-          } catch (e) {}
-
-          // 4. CSS animations
-          const animations = document.getAnimations ? document.getAnimations() : [];
-          for (const anim of animations) {
-            try {
-              anim.currentTime = timeSeconds * 1000;
-              anim.pause();
-            } catch (e) {}
-          }
-
-          // 5. HTML5 video elements
-          const videos = document.querySelectorAll('video');
-          for (const vid of videos) {
-            try {
-              vid.currentTime = timeSeconds;
-              vid.pause();
-            } catch (e) {}
-          }
-        };
+            // 5. HTML5 video elements
+            var vids = document.querySelectorAll('video');
+            for (var j = 0; j < vids.length; j++) {
+              try {
+                vids[j].currentTime = timeSeconds;
+                vids[j].pause();
+              } catch (e) {}
+            }
+          };
+        })();
+        true;
       `);
 
       // Prime frame at 0.0s
       try {
-        await this.renderWindow.webContents.executeJavaScript(`window.__HMS_SEEK__(0)`);
+        await this.renderWindow.webContents.executeJavaScript(`(async () => { try { await window.__HMS_SEEK__(0); } catch(e){} })(); true;`);
       } catch {}
 
       // 3. Inspect if Strategy A is detected
@@ -197,9 +200,9 @@ export class HeadlessRenderer {
 
         const currentTime = frameIndex * frameInterval;
 
-        // Seek DOM
+        // Seek DOM (returns boolean primitive true to guarantee structured cloning)
         await this.renderWindow.webContents.executeJavaScript(
-          `window.__HMS_SEEK__(${currentTime})`
+          `(async () => { try { await window.__HMS_SEEK__(${currentTime}); } catch(e){} })(); true;`
         );
 
         // Small microtask yield for layout/paint flush

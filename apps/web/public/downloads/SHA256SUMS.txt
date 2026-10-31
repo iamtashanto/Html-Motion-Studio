@@ -1,3 +1,6 @@
-6998e1842b2a0a6a0c88df0ba3a020bcdbff9da91cff4d500ca161527cf51730  HTML-Motion-Studio-1.0.0-arm64.dmg
-a6adbc5db8a33e835b2d7356f49b50a7be3f250ed5002ba60712235c5138aa9c  HTML-Motion-Studio-1.0.0-mac.zip
-934ae8271ebc22ff8397a4846ba5c45e5d3e81dcfa13e648ba17afb1b0bcafc5  HTML-Motion-Studio-1.0.0-x64.dmg
+53f777eddf1646ef41a7097e3961c7c50a0c93cd4072d3df36d30e5726c2570a  HTML-Motion-Studio-1.0.0-arm64.dmg
+01986ce529fc6eb822f5c81c15642618e494d3c2b02e27ba70fa62ddb99473e2  HTML-Motion-Studio-1.0.0-linux.tar.gz
+3270da4411f2a38d79b4896bb67ce3f22ba8c59b0f827c8d0b0ffb8c0c70c933  HTML-Motion-Studio-1.0.0-mac.zip
+bb7ec2011014cee245bbcd5718257bbe86f7017f86ea4d075af0bfb2d8f79420  HTML-Motion-Studio-1.0.0-x64.dmg
+1769e79ec9b60a216a36c914f9897df49d15160222e746565f35fd9bebb58fd9  HTML-Motion-Studio-1.0.0.AppImage
+bc5dc6edccc6671e0bbcae0c6b37af6c0fb7b82d48363c94d76d6e3b1c701997  HTML-Motion-Studio-Setup-1.0.0.exe
