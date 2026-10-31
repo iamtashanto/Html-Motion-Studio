@@ -20,12 +20,12 @@ mac-arm64/
 
 # Large distribution binaries in public downloads (keep SHA256 checksums in git)
 apps/web/public/downloads/*.dmg
-apps/web/public/downloads/*.exe
 apps/web/public/downloads/*.AppImage
 apps/web/public/downloads/*.tar.gz
 apps/web/public/downloads/*.zip
 apps/web/public/downloads/*.blockmap
 !apps/web/public/downloads/SHA256SUMS.txt
+!apps/web/public/downloads/HTML-Motion-Studio-Setup-1.0.0.exe
 
 # Temporary test outputs and frame caches
 test-results/
