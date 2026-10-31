@@ -9,6 +9,7 @@ import {
   HelpCircle,
   ExternalLink,
   Sparkles,
+  Heart,
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -53,6 +54,17 @@ export const Navbar: React.FC = () => {
             <DownloadCloud className="w-3.5 h-3.5 text-blue-400" />
             <span className="hidden sm:inline">Desktop App</span>
           </Link>
+
+          <a
+            href="https://www.supportkori.com/iamtashanto"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-xs font-semibold text-pink-400 hover:text-pink-300 transition shadow-sm"
+            title="Support TA Shanto on SupportKori"
+          >
+            <Heart className="w-3.5 h-3.5 fill-pink-500 text-pink-500" />
+            <span>Support</span>
+          </a>
 
           <a
             href="https://tashanto.com"

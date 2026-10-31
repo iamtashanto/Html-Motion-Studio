@@ -13,6 +13,7 @@ import {
   FileCode,
   Sparkles,
   ExternalLink,
+  Heart,
 } from 'lucide-react';
 
 export const metadata = {
@@ -227,13 +228,25 @@ export default function DownloadPage() {
 
       {/* Return to Web Converter CTA & Developer Credit */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800/80 text-xs text-slate-500">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition font-medium"
-        >
-          <span>Prefer running in your browser without installation? Launch Web Studio</span>
-          <ArrowRight className="w-4 h-4 text-blue-400" />
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition font-medium"
+          >
+            <span>Prefer running in your browser? Launch Web Studio</span>
+            <ArrowRight className="w-4 h-4 text-blue-400" />
+          </Link>
+          <span className="hidden md:inline text-slate-700">•</span>
+          <a
+            href="https://www.supportkori.com/iamtashanto"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 text-pink-400 hover:text-pink-300 font-semibold transition"
+          >
+            <Heart className="w-3.5 h-3.5 fill-pink-500 text-pink-500" />
+            <span>Support on SupportKori</span>
+          </a>
+        </div>
 
         <p className="text-slate-400">
           Developed by{' '}

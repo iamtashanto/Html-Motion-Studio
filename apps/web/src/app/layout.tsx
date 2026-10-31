@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Navbar } from '@/components/layout/Navbar';
+import { Heart } from 'lucide-react';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://htmlmotionstudio.tashanto.com'),
@@ -137,6 +138,17 @@ export default function RootLayout({
                 className="text-slate-400 hover:text-blue-400 font-semibold transition"
               >
                 tashanto.com
+              </a>
+              <span className="text-slate-700">•</span>
+              <a
+                href="https://www.supportkori.com/iamtashanto"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-pink-400 hover:text-pink-300 font-semibold transition"
+                title="Support on SupportKori"
+              >
+                <Heart className="w-3 h-3 fill-pink-500 text-pink-500" />
+                <span>Support</span>
               </a>
             </div>
           </div>
