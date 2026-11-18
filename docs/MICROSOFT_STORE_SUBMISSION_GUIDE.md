@@ -125,3 +125,4 @@ Answer these questions during submission:
 ## 7. Notes for Certification (Reviewer Note)
 Copy & paste into the certification notes box:
 > "HTML Motion Studio is an offline developer video studio that renders HTML/CSS/Canvas animation into MP4 video using local Chromium and local FFmpeg. No account, login, or network connection is required to test the application."
+
