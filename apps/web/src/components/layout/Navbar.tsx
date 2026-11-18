@@ -53,6 +53,9 @@ export const Navbar: React.FC = () => {
           >
             <DownloadCloud className="w-3.5 h-3.5 text-blue-400" />
             <span className="hidden sm:inline">Desktop App</span>
+            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              v2.0
+            </span>
           </Link>
 
           <a

@@ -3,19 +3,16 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  DownloadCloud,
   Monitor,
   Globe,
-  Check,
-  X,
   Sparkles,
-  Zap,
-  Layers,
-  Cpu,
   ArrowRight,
   Apple,
   Terminal,
 } from 'lucide-react';
+
+const GITHUB_RELEASE_BASE =
+  'https://github.com/iamtashanto/Html-Motion-Studio/releases/download/v2.0.0';
 
 export const DesktopCompanionBanner: React.FC = () => {
   const [showMatrix, setShowMatrix] = useState(false);
@@ -29,55 +26,58 @@ export const DesktopCompanionBanner: React.FC = () => {
         <div className="max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            Companion Professional Suite
+            New v2.0.0 Native Suite — Rust Core + SwiftUI
           </div>
 
           <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-            Need High-Resolution, Frame-Accurate Rendering?
+            Need Ultra-Fast Native 4K, Frame-Accurate Rendering?
           </h2>
 
           <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-            <strong>HTML Motion Studio Web</strong> is built for instant browser conversions. For long animations, 4K/60fps master exports, complex WebGL/Three.js scenes, and alpha transparency, download <strong>HTML Motion Studio Desktop</strong> for macOS, Windows, and Linux.
+            <strong>HTML Motion Studio Web</strong> is built for instant browser conversions. For long animations, 4K/60fps exports, ProRes 4444, and zero-disk-I/O FFmpeg piping, download <strong>HTML Motion Studio Native v2.0.0</strong> — pure <strong>SwiftUI</strong> on macOS (1.5 MB) and GPU-accelerated <strong>Rust Slint UI</strong> on Windows &amp; Linux.
           </p>
 
           {/* Direct Download Action Row */}
           <div className="pt-2 space-y-3">
             <div className="flex flex-wrap items-center gap-3">
               <a
-                href="/downloads/HTML-Motion-Studio-Setup-1.0.0.exe"
-                download="HTML-Motion-Studio-Setup-1.0.0.exe"
+                href={`${GITHUB_RELEASE_BASE}/HTML-Motion-Studio-2.0.0-native-macos-arm64.zip`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/25 transition active:scale-95"
-                title="Download Windows x64 Installer (.exe) - 92 MB"
+                title="Download macOS Apple Silicon Native SwiftUI App (1.5 MB ZIP)"
+              >
+                <Apple className="w-4 h-4 text-white" />
+                <span>macOS SwiftUI (1.5 MB)</span>
+              </a>
+
+              <a
+                href={`${GITHUB_RELEASE_BASE}/HTML-Motion-Studio-2.0.0-native-windows-x64.zip`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs rounded-xl transition active:scale-95 shadow-md"
+                title="Download Windows x64 Native Rust App"
               >
                 <Monitor className="w-4 h-4 text-cyan-300" />
-                <span>Windows (.exe)</span>
+                <span>Windows (Rust)</span>
               </a>
 
               <a
-                href="/downloads/HTML-Motion-Studio-1.0.0-arm64.dmg"
-                download="HTML-Motion-Studio-1.0.0-arm64.dmg"
+                href={`${GITHUB_RELEASE_BASE}/HTML-Motion-Studio-2.0.0-native-linux-x64.tar.gz`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs rounded-xl transition active:scale-95 shadow-md"
-                title="Download macOS Apple Silicon DMG - 112 MB"
-              >
-                <Apple className="w-4 h-4 text-slate-200" />
-                <span>macOS (.dmg)</span>
-              </a>
-
-              <a
-                href="/downloads/HTML-Motion-Studio-1.0.0.AppImage"
-                download="HTML-Motion-Studio-1.0.0.AppImage"
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs rounded-xl transition active:scale-95 shadow-md"
-                title="Download Linux x64 Standalone AppImage - 121 MB"
+                title="Download Linux x64 Native Rust App"
               >
                 <Terminal className="w-4 h-4 text-emerald-400" />
-                <span>Linux (.AppImage)</span>
+                <span>Linux (Rust)</span>
               </a>
 
               <Link
                 href="/download"
                 className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-semibold px-3 py-2 rounded-lg hover:bg-blue-950/40 transition"
               >
-                <span>All Downloads & Intel Macs</span>
+                <span>All Downloads &amp; Classic v1.0</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -87,7 +87,7 @@ export const DesktopCompanionBanner: React.FC = () => {
                 onClick={() => setShowMatrix(!showMatrix)}
                 className="text-xs text-slate-400 hover:text-slate-200 font-semibold underline underline-offset-4"
               >
-                {showMatrix ? 'Hide Feature Comparison' : 'Compare Web vs. Desktop Editions'}
+                {showMatrix ? 'Hide Feature Comparison' : 'Compare Web vs. Native Desktop v2.0'}
               </button>
             </div>
           </div>
@@ -95,22 +95,22 @@ export const DesktopCompanionBanner: React.FC = () => {
 
         {/* Quick Highlights Badge */}
         <div className="w-full md:w-auto p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs">
-          <div className="font-semibold text-slate-200">Recommended for Desktop:</div>
+          <div className="font-semibold text-slate-200">New in Native v2.0.0:</div>
           <div className="text-slate-400 flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            Animations longer than 60 seconds
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            Shared Rust Core + Native SQLite
           </div>
           <div className="text-slate-400 flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            Deterministic frame-by-frame stepping
+            Pure SwiftUI macOS App (1.5 MB ZIP)
           </div>
           <div className="text-slate-400 flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            Apple ProRes 4444 & Alpha transparency
+            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+            Zero-Disk-I/O FFmpeg Stdin Streaming
           </div>
           <div className="text-slate-400 flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-            Large multi-gigabyte ZIP projects
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+            4K 60fps, WebM VP9 &amp; ProRes 4444
           </div>
         </div>
       </div>
@@ -131,16 +131,16 @@ export const DesktopCompanionBanner: React.FC = () => {
                 <th className="py-3 px-4 font-semibold text-indigo-400">
                   <span className="flex items-center gap-1.5">
                     <Monitor className="w-3.5 h-3.5" />
-                    HTML Motion Studio Desktop
+                    HTML Motion Studio Native v2.0
                   </span>
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-300">
               <tr>
-                <td className="py-3 px-4 font-medium">Installation Requirement</td>
+                <td className="py-3 px-4 font-medium">Architecture</td>
                 <td className="py-3 px-4 text-emerald-400">Zero installation (In-browser)</td>
-                <td className="py-3 px-4 text-slate-300">Native macOS / Windows App</td>
+                <td className="py-3 px-4 text-emerald-400 font-semibold">Rust Core + SwiftUI (macOS) / Slint (Win &amp; Linux)</td>
               </tr>
               <tr>
                 <td className="py-3 px-4 font-medium">Duration Capability</td>
@@ -148,9 +148,9 @@ export const DesktopCompanionBanner: React.FC = () => {
                 <td className="py-3 px-4 text-emerald-400 font-semibold">Unlimited duration</td>
               </tr>
               <tr>
-                <td className="py-3 px-4 font-medium">Rendering Mechanism</td>
+                <td className="py-3 px-4 font-medium">Rendering Pipeline</td>
                 <td className="py-3 px-4">WebCodecs + MediaRecorder API</td>
-                <td className="py-3 px-4 text-emerald-400 font-semibold">Headless Chromium GPU Engine</td>
+                <td className="py-3 px-4 text-emerald-400 font-semibold">Rust CDP Chromium + Zero-Disk FFmpeg Pipe</td>
               </tr>
               <tr>
                 <td className="py-3 px-4 font-medium">Frame Accuracy</td>
@@ -160,12 +160,12 @@ export const DesktopCompanionBanner: React.FC = () => {
               <tr>
                 <td className="py-3 px-4 font-medium">Output Containers</td>
                 <td className="py-3 px-4">MP4 (H.264), WebM (VP9)</td>
-                <td className="py-3 px-4 text-emerald-400 font-semibold">ProRes, H.264, H.265, GIF, PNG sequences</td>
+                <td className="py-3 px-4 text-emerald-400 font-semibold">MP4 (H.264), WebM (VP9), Apple ProRes 4444 (.mov)</td>
               </tr>
               <tr>
                 <td className="py-3 px-4 font-medium">Transparent Alpha Channel</td>
                 <td className="py-3 px-4 text-slate-500">Limited (Solid composite)</td>
-                <td className="py-3 px-4 text-emerald-400 font-semibold">Full alpha transparency export</td>
+                <td className="py-3 px-4 text-emerald-400 font-semibold">Full alpha transparency (VP9 / ProRes 4444)</td>
               </tr>
               <tr>
                 <td className="py-3 px-4 font-medium">Client Privacy</td>
@@ -179,4 +179,3 @@ export const DesktopCompanionBanner: React.FC = () => {
     </section>
   );
 };
-
