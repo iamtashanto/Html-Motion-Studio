@@ -1,0 +1,1490 @@
+import { VerticalBox, HorizontalBox, ScrollView, LineEdit, TextEdit, Slider, Button } from "std-widgets.slint";
+
+export struct TemplateRow {
+    id: string,
+    name: string,
+    category: string,
+    description: string,
+    duration: float,
+}
+
+export struct RecentRow {
+    id: string,
+    title: string,
+    file_path: string,
+}
+
+export struct AssetRow {
+    name: string,
+    path: string,
+    kind: string,
+    size_label: string,
+}
+
+export struct MarkerRow {
+    time: float,
+    pct: float,
+}
+
+component StudioPillButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> active: false;
+    in property <bool> primary: false;
+    in property <bool> danger: false;
+    in property <bool> disabled: false;
+    callback clicked();
+
+    height: 30px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: primary ? #4f46e5 : danger ? #ef444480 : active ? #3b82f6 : #1e293b;
+    background: disabled ? #1e293b :
+                primary ? (touch.has-hover ? #3b82f6 : #2563eb) :
+                danger ? (touch.has-hover ? #7f1d1d : #450a0a) :
+                active ? #1e3a8a :
+                (touch.has-hover ? #1e293b : #0f172a);
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        alignment: center;
+        Text {
+            text: root.label;
+            color: disabled ? #64748b : primary || active ? #ffffff : danger ? #fca5a5 : #cbd5e1;
+            font-size: 11px;
+            font-weight: primary || active ? 700 : 500;
+            vertical-alignment: center;
+        }
+    }
+
+    touch := TouchArea {
+        enabled: !root.disabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component StudioWindow inherits Window {
+    title: "HTML Motion Studio Pro — Native Rust";
+    preferred-width: 1400px;
+    preferred-height: 860px;
+    min-width: 1024px;
+    min-height: 680px;
+    background: #090d16;
+
+    // Project & Header State
+    in-out property <string> project_title: "2. CSS Keyframe Motion";
+    in-out property <bool> is_dirty: false;
+    in-out property <string> entry_html_path: "index.html";
+    in-out property <[string]> available_html_files: ["index.html"];
+    in-out property <[AssetRow]> asset_rows: [];
+    in-out property <[RecentRow]> recent_projects: [];
+    in-out property <[TemplateRow]> templates: [];
+    in-out property <string> capabilities_label: "FFmpeg Checking...";
+    in-out property <bool> ffmpeg_available: false;
+    in-out property <bool> chromium_available: false;
+    in-out property <string> compatibility_status: "ready";
+    in-out property <string> compatibility_summary: "Project is ready for deterministic native video rendering.";
+    in-out property <string> error_banner: "";
+
+    // Panel visibility
+    in-out property <bool> show_left_sidebar: true;
+    in-out property <bool> show_right_panel: true;
+    in-out property <bool> show_timeline: true;
+    in-out property <int> inspector_tab: 0; // 0 = Export, 1 = Engine, 2 = Audio
+
+    // Preview & Playback State
+    in-out property <image> preview_image;
+    in-out property <bool> preview_ready: false;
+    in-out property <bool> is_playing: false;
+    in-out property <float> current_time: 0.0;
+    in-out property <float> duration_seconds: 4.0;
+    in-out property <int> fps: 60;
+    in-out property <int> width_px: 1920;
+    in-out property <int> height_px: 1080;
+    in-out property <string> resolution_preset: "1080p";
+    in-out property <string> format: "mp4";
+    in-out property <string> strategy: "compatibility";
+    in-out property <string> preview_zoom: "fit";
+    in-out property <string> preview_bg: "dark";
+    in-out property <bool> time_in_frames: false;
+    in-out property <int> timeline_zoom: 1;
+    in-out property <[MarkerRow]> markers: [];
+
+    // Audio State
+    in-out property <string> audio_file_name: "";
+    in-out property <string> audio_file_path: "";
+    in-out property <float> audio_volume: 1.0;
+    in-out property <float> audio_fade_in: 0.5;
+    in-out property <float> audio_fade_out: 0.5;
+    in-out property <float> audio_offset: 0.0;
+
+    // Export Destination & Status
+    in-out property <string> output_filename: "desktop-export";
+    in-out property <string> output_directory: "";
+    in-out property <bool> is_exporting: false;
+    in-out property <int> export_pct: 0;
+    in-out property <int> export_current_frame: 0;
+    in-out property <int> export_total_frames: 240;
+    in-out property <string> export_elapsed_label: "0.0s";
+    in-out property <string> export_fps_label: "0.0 FPS";
+    in-out property <string> export_message: "";
+
+    // Export Success Modal
+    in-out property <bool> show_success_modal: false;
+    in-out property <string> success_filename: "";
+    in-out property <string> success_codec: "H264";
+    in-out property <string> success_dimensions: "1920x1080";
+    in-out property <string> success_fps: "60 fps";
+    in-out property <string> success_size: "0.00 MB";
+
+    // Modals & Popovers
+    in-out property <bool> show_recents_popover: false;
+    in-out property <bool> show_new_project_modal: false;
+    in-out property <string> new_project_title: "New Motion Project";
+    in-out property <string> selected_template_id: "2-css-keyframes";
+    in-out property <bool> show_code_editor: false;
+    in-out property <int> code_tab: 0; // 0 = HTML, 1 = CSS, 2 = JS
+    in-out property <string> editor_html: "";
+    in-out property <string> editor_css: "";
+    in-out property <string> editor_js: "";
+
+    // Callbacks into Rust Controller
+    callback create_project(string, string);
+    callback open_project_file();
+    callback open_project_folder();
+    callback open_recent_project(string);
+    callback save_project();
+    callback rename_project(string);
+    callback select_entry_html(string);
+    callback select_audio_file();
+    callback clear_audio();
+    callback toggle_play();
+    callback stop_and_rewind();
+    callback restart_playback();
+    callback seek_to(float);
+    callback step_frame(bool);
+    callback add_marker();
+    callback refresh_preview();
+    callback open_browser_preview();
+    callback set_resolution(string, int, int);
+    callback set_fps(int);
+    callback set_format(string);
+    callback set_duration(float);
+    callback set_strategy(string);
+    callback choose_save_destination();
+    callback start_export();
+    callback cancel_export();
+    callback open_exported_video();
+    callback show_exported_in_folder();
+    callback open_code_editor_requested();
+    callback apply_code_editor();
+    callback format_code_editor();
+
+    VerticalLayout {
+        spacing: 0px;
+
+        // ============================================================
+        // TOP APPLICATION TOOLBAR
+        // ============================================================
+        Rectangle {
+            height: 52px;
+            background: #020617;
+            border-width: 1px;
+            border-color: #1e293b;
+
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                spacing: 10px;
+                alignment: space-between;
+
+                // Left: Brand + File Actions
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+
+                    Rectangle {
+                        width: 28px;
+                        height: 28px;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 8px;
+                        background: @linear-gradient(135deg, #2563eb 0%, #6366f1 100%);
+                        Text {
+                            text: "M";
+                            color: #ffffff;
+                            font-size: 13px;
+                            font-weight: 900;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 6px;
+                        Text {
+                            text: "MOTION STUDIO";
+                            color: #ffffff;
+                            font-size: 12px;
+                            font-weight: 800;
+                            vertical-alignment: center;
+                        }
+                        Rectangle {
+                            width: 34px;
+                            height: 18px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 4px;
+                            background: #312e81;
+                            border-width: 1px;
+                            border-color: #6366f180;
+                            Text {
+                                text: "RUST";
+                                color: #a5b4fc;
+                                font-size: 9px;
+                                font-weight: 800;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    Rectangle { width: 1px; height: 22px; y: 15px; background: #1e293b; }
+
+                    StudioPillButton {
+                        y: 11px;
+                        label: "+ New";
+                        clicked => { root.show_new_project_modal = true; }
+                    }
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Open File/ZIP";
+                        clicked => { root.open_project_file(); }
+                    }
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Folder";
+                        clicked => { root.open_project_folder(); }
+                    }
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Save";
+                        clicked => { root.save_project(); }
+                    }
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Recent ▾";
+                        active: root.show_recents_popover;
+                        clicked => { root.show_recents_popover = !root.show_recents_popover; }
+                    }
+                }
+
+                // Center: Editable Project Title + Dirty Pill
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: center;
+
+                    LineEdit {
+                        width: 210px;
+                        height: 28px;
+                        y: 12px;
+                        text <=> root.project_title;
+                        font-size: 12px;
+                        accepted => { root.rename_project(root.project_title); }
+                    }
+
+                    Rectangle {
+                        height: 20px;
+                        y: 16px;
+                        border-radius: 10px;
+                        background: root.is_dirty ? #451a03 : #052e16;
+                        border-width: 1px;
+                        border-color: root.is_dirty ? #d9770680 : #10b98180;
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            Text {
+                                text: root.is_dirty ? "Unsaved" : "Saved";
+                                color: root.is_dirty ? #fcd34d : #6ee7b7;
+                                font-size: 10px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                // Right: Panel Toggles + Code Editor + Capabilities + Export CTA
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Assets";
+                        active: root.show_left_sidebar;
+                        clicked => { root.show_left_sidebar = !root.show_left_sidebar; }
+                    }
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Timeline";
+                        active: root.show_timeline;
+                        clicked => { root.show_timeline = !root.show_timeline; }
+                    }
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Inspector";
+                        active: root.show_right_panel;
+                        clicked => { root.show_right_panel = !root.show_right_panel; }
+                    }
+
+                    StudioPillButton {
+                        y: 11px;
+                        label: "</> Code";
+                        clicked => { root.open_code_editor_requested(); }
+                    }
+
+                    Rectangle {
+                        height: 28px;
+                        y: 12px;
+                        border-radius: 8px;
+                        background: #0f172a;
+                        border-width: 1px;
+                        border-color: #1e293b;
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            spacing: 6px;
+                            Text {
+                                text: root.capabilities_label;
+                                color: root.ffmpeg_available ? #34d399 : #fbbf24;
+                                font-size: 10px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+
+                    StudioPillButton {
+                        y: 11px;
+                        label: "Export " + root.format;
+                        primary: true;
+                        disabled: root.is_exporting;
+                        clicked => { root.start_export(); }
+                    }
+                }
+            }
+        }
+
+        // Error Banner (if any)
+        if root.error_banner != "" : Rectangle {
+            height: 34px;
+            background: #450a0a;
+            border-width: 1px;
+            border-color: #991b1b;
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                alignment: space-between;
+                Text {
+                    text: "Export Notice: " + root.error_banner;
+                    color: #fecaca;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                }
+                StudioPillButton {
+                    y: 2px;
+                    label: "Dismiss";
+                    danger: true;
+                    clicked => { root.error_banner = ""; }
+                }
+            }
+        }
+
+        // ============================================================
+        // MAIN WORKSPACE: LEFT SIDEBAR + CENTER STAGE + RIGHT INSPECTOR
+        // ============================================================
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 0px;
+
+            // LEFT: ASSETS SIDEBAR
+            if root.show_left_sidebar : Rectangle {
+                width: 255px;
+                background: #020617;
+                border-width: 1px;
+                border-color: #1e293b;
+
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 12px;
+
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text {
+                            text: "PROJECT ASSETS";
+                            color: #94a3b8;
+                            font-size: 11px;
+                            font-weight: 800;
+                        }
+                        Text {
+                            text: root.asset_rows.length + " files";
+                            color: #64748b;
+                            font-size: 10px;
+                        }
+                    }
+
+                    // Compatibility status pill
+                    Rectangle {
+                        height: 46px;
+                        border-radius: 10px;
+                        background: #0f172a;
+                        border-width: 1px;
+                        border-color: root.compatibility_status == "ready" ? #10b98160 : #f59e0b60;
+                        VerticalLayout {
+                            padding: 8px;
+                            spacing: 2px;
+                            Text {
+                                text: "Status: " + root.compatibility_status;
+                                color: root.compatibility_status == "ready" ? #34d399 : #fbbf24;
+                                font-size: 10px;
+                                font-weight: 700;
+                            }
+                            Text {
+                                text: root.compatibility_summary;
+                                color: #94a3b8;
+                                font-size: 9px;
+                                overflow: elide;
+                            }
+                        }
+                    }
+
+                    // Entry HTML files
+                    Text {
+                        text: "ENTRY HTML";
+                        color: #64748b;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+                    VerticalLayout {
+                        spacing: 4px;
+                        for html_file in root.available_html_files : Rectangle {
+                            height: 30px;
+                            border-radius: 8px;
+                            background: html_file == root.entry_html_path ? #1e3a8a60 : #0f172a;
+                            border-width: 1px;
+                            border-color: html_file == root.entry_html_path ? #3b82f6 : #1e293b;
+                            HorizontalLayout {
+                                padding-left: 8px;
+                                padding-right: 8px;
+                                alignment: space-between;
+                                Text {
+                                    text: html_file;
+                                    color: html_file == root.entry_html_path ? #93c5fd : #cbd5e1;
+                                    font-size: 11px;
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
+                                if html_file == root.entry_html_path : Text {
+                                    text: "ACTIVE";
+                                    color: #60a5fa;
+                                    font-size: 9px;
+                                    font-weight: 800;
+                                    vertical-alignment: center;
+                                }
+                            }
+                            TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.select_entry_html(html_file); }
+                            }
+                        }
+                    }
+
+                    // Scanned Assets List
+                    Text {
+                        text: "PROJECT FILES";
+                        color: #64748b;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+                    ScrollView {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            spacing: 4px;
+                            for asset in root.asset_rows : Rectangle {
+                                height: 26px;
+                                border-radius: 6px;
+                                background: #0f172a;
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    padding-right: 8px;
+                                    alignment: space-between;
+                                    Text {
+                                        text: "[" + asset.kind + "] " + asset.name;
+                                        color: #cbd5e1;
+                                        font-size: 10px;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                    }
+                                    Text {
+                                        text: asset.size_label;
+                                        color: #64748b;
+                                        font-size: 9px;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Soundtrack Audio Card
+                    Text {
+                        text: "SOUNDTRACK AUDIO";
+                        color: #64748b;
+                        font-size: 10px;
+                        font-weight: 700;
+                    }
+                    if root.audio_file_path != "" : Rectangle {
+                        height: 62px;
+                        border-radius: 10px;
+                        background: #2e106580;
+                        border-width: 1px;
+                        border-color: #a855f760;
+                        VerticalLayout {
+                            padding: 8px;
+                            spacing: 4px;
+                            HorizontalLayout {
+                                alignment: space-between;
+                                Text {
+                                    text: root.audio_file_name;
+                                    color: #e9d5ff;
+                                    font-size: 11px;
+                                    font-weight: 700;
+                                    overflow: elide;
+                                }
+                                StudioPillButton {
+                                    height: 22px;
+                                    label: "Remove";
+                                    danger: true;
+                                    clicked => { root.clear_audio(); }
+                                }
+                            }
+                            Text {
+                                text: root.audio_file_path;
+                                color: #94a3b8;
+                                font-size: 9px;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                    if root.audio_file_path == "" : StudioPillButton {
+                        label: "+ Attach Audio Track";
+                        clicked => { root.select_audio_file(); }
+                    }
+                }
+            }
+
+            // CENTER: STAGE PREVIEW + MASTER TIMELINE
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 0px;
+
+                // Preview Header Bar
+                Rectangle {
+                    height: 38px;
+                    background: #020617;
+                    border-width: 1px;
+                    border-color: #1e293b;
+                    HorizontalLayout {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text {
+                                text: root.width_px + "×" + root.height_px + "  •  " + root.fps + " FPS";
+                                color: #e2e8f0;
+                                font-size: 11px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 6px;
+                            StudioPillButton {
+                                y: 4px;
+                                label: "Fit";
+                                active: root.preview_zoom == "fit";
+                                clicked => { root.preview_zoom = "fit"; }
+                            }
+                            StudioPillButton {
+                                y: 4px;
+                                label: "50%";
+                                active: root.preview_zoom == "50%";
+                                clicked => { root.preview_zoom = "50%"; }
+                            }
+                            StudioPillButton {
+                                y: 4px;
+                                label: "100%";
+                                active: root.preview_zoom == "100%";
+                                clicked => { root.preview_zoom = "100%"; }
+                            }
+                            StudioPillButton {
+                                y: 4px;
+                                label: "Dark";
+                                active: root.preview_bg == "dark";
+                                clicked => { root.preview_bg = "dark"; }
+                            }
+                            StudioPillButton {
+                                y: 4px;
+                                label: "Light";
+                                active: root.preview_bg == "light";
+                                clicked => { root.preview_bg = "light"; }
+                            }
+                            StudioPillButton {
+                                y: 4px;
+                                label: "Refresh";
+                                clicked => { root.refresh_preview(); }
+                            }
+                            StudioPillButton {
+                                y: 4px;
+                                label: "Browser Preview";
+                                clicked => { root.open_browser_preview(); }
+                            }
+                        }
+                    }
+                }
+
+                // Stage Canvas Viewport
+                Rectangle {
+                    vertical-stretch: 1;
+                    background: root.preview_bg == "light" ? #e2e8f0 : #090d16;
+
+                    Rectangle {
+                        width: root.preview_zoom == "50%" ? parent.width * 0.48 :
+                               root.preview_zoom == "100%" ? parent.width * 0.94 :
+                               parent.width * 0.86;
+                        height: root.preview_zoom == "50%" ? parent.height * 0.48 :
+                                root.preview_zoom == "100%" ? parent.height * 0.92 :
+                                parent.height * 0.86;
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        border-radius: 12px;
+                        border-width: 2px;
+                        border-color: #334155;
+                        background: #000000;
+                        clip: true;
+
+                        if root.preview_ready : Image {
+                            width: 100%;
+                            height: 100%;
+                            source: root.preview_image;
+                            image-fit: contain;
+                        }
+
+                        if !root.preview_ready : VerticalLayout {
+                            alignment: center;
+                            spacing: 8px;
+                            Text {
+                                text: "HTML Motion Stage Ready";
+                                color: #f8fafc;
+                                font-size: 16px;
+                                font-weight: 700;
+                                horizontal-alignment: center;
+                            }
+                            Text {
+                                text: "Click Refresh or Play to render deterministic Chromium frame snapshots";
+                                color: #94a3b8;
+                                font-size: 11px;
+                                horizontal-alignment: center;
+                            }
+                        }
+                    }
+                }
+
+                // Transport Bar
+                Rectangle {
+                    height: 44px;
+                    background: #020617;
+                    border-width: 1px;
+                    border-color: #1e293b;
+                    HorizontalLayout {
+                        padding-left: 16px;
+                        padding-right: 16px;
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            StudioPillButton {
+                                y: 7px;
+                                label: root.is_playing ? "⏸ Pause" : "▶ Play";
+                                primary: true;
+                                clicked => { root.toggle_play(); }
+                            }
+                            StudioPillButton {
+                                y: 7px;
+                                label: "■ Stop";
+                                clicked => { root.stop_and_rewind(); }
+                            }
+                            StudioPillButton {
+                                y: 7px;
+                                label: "↺ Restart";
+                                clicked => { root.restart_playback(); }
+                            }
+                            StudioPillButton {
+                                y: 7px;
+                                label: "◀ -1f";
+                                clicked => { root.step_frame(false); }
+                            }
+                            StudioPillButton {
+                                y: 7px;
+                                label: "+1f ▶";
+                                clicked => { root.step_frame(true); }
+                            }
+                        }
+
+                        Text {
+                            text: root.time_in_frames
+                                ? Math.round(root.current_time * root.fps) + "f / " + Math.round(root.duration_seconds * root.fps) + "f"
+                                : (Math.round(root.current_time * 100) / 100) + "s / " + (Math.round(root.duration_seconds * 100) / 100) + "s";
+                            color: #60a5fa;
+                            font-size: 12px;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                // BOTTOM: MASTER TIMELINE
+                if root.show_timeline : Rectangle {
+                    height: 155px;
+                    background: #020617;
+                    border-width: 1px;
+                    border-color: #1e293b;
+
+                    VerticalLayout {
+                        padding: 10px;
+                        spacing: 8px;
+
+                        HorizontalLayout {
+                            alignment: space-between;
+                            HorizontalLayout {
+                                spacing: 8px;
+                                Text {
+                                    text: "MASTER TIMELINE";
+                                    color: #cbd5e1;
+                                    font-size: 10px;
+                                    font-weight: 800;
+                                    vertical-alignment: center;
+                                }
+                                StudioPillButton {
+                                    height: 24px;
+                                    label: root.time_in_frames ? "Mode: Frames" : "Mode: Seconds";
+                                    clicked => { root.time_in_frames = !root.time_in_frames; }
+                                }
+                                StudioPillButton {
+                                    height: 24px;
+                                    label: "+ Marker";
+                                    clicked => { root.add_marker(); }
+                                }
+                            }
+                            HorizontalLayout {
+                                spacing: 4px;
+                                StudioPillButton {
+                                    height: 24px;
+                                    label: "1x";
+                                    active: root.timeline_zoom == 1;
+                                    clicked => { root.timeline_zoom = 1; }
+                                }
+                                StudioPillButton {
+                                    height: 24px;
+                                    label: "2x";
+                                    active: root.timeline_zoom == 2;
+                                    clicked => { root.timeline_zoom = 2; }
+                                }
+                                StudioPillButton {
+                                    height: 24px;
+                                    label: "4x";
+                                    active: root.timeline_zoom == 4;
+                                    clicked => { root.timeline_zoom = 4; }
+                                }
+                            }
+                        }
+
+                        // Interactive Scrubber Ruler
+                        ruler := Rectangle {
+                            height: 30px;
+                            border-radius: 8px;
+                            background: #0f172a;
+                            border-width: 1px;
+                            border-color: #1e293b;
+
+                            // Markers
+                            for m in root.markers : Rectangle {
+                                x: (parent.width - 8px) * m.pct;
+                                y: 2px;
+                                width: 8px;
+                                height: 8px;
+                                border-radius: 4px;
+                                background: #fbbf24;
+                            }
+
+                            // Red Playhead
+                            Rectangle {
+                                x: root.duration_seconds > 0 ? (parent.width - 2px) * clamp(root.current_time / root.duration_seconds, 0.0, 1.0) : 0px;
+                                y: 0px;
+                                width: 2px;
+                                height: parent.height;
+                                background: #ef4444;
+                            }
+
+                            TouchArea {
+                                mouse-cursor: col-resize;
+                                pointer-event(ev) => {
+                                    if (self.pressed) {
+                                        root.seek_to(clamp(self.mouse-x / ruler.width, 0.0, 1.0) * root.duration_seconds);
+                                    }
+                                }
+                                clicked => {
+                                    root.seek_to(clamp(self.mouse-x / ruler.width, 0.0, 1.0) * root.duration_seconds);
+                                }
+                            }
+                        }
+
+                        // Video Track Bar
+                        Rectangle {
+                            height: 26px;
+                            border-radius: 7px;
+                            background: #172554;
+                            border-width: 1px;
+                            border-color: #2563eb80;
+                            Rectangle {
+                                x: 0px;
+                                y: 0px;
+                                width: root.duration_seconds > 0 ? parent.width * clamp(root.current_time / root.duration_seconds, 0.0, 1.0) : 0px;
+                                height: parent.height;
+                                border-radius: 7px;
+                                background: #2563eb40;
+                            }
+                            Text {
+                                x: 10px;
+                                text: "HTML MOTION GRAPHIC (" + root.width_px + "×" + root.height_px + " @ " + root.fps + "fps • " + root.duration_seconds + "s)";
+                                color: #93c5fd;
+                                font-size: 10px;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        // Audio Track Bar
+                        Rectangle {
+                            height: 26px;
+                            border-radius: 7px;
+                            background: #2e106550;
+                            border-width: 1px;
+                            border-color: #9333ea60;
+                            Text {
+                                x: 10px;
+                                text: root.audio_file_path != ""
+                                    ? "AUDIO: " + root.audio_file_name + " (Vol " + Math.round(root.audio_volume * 100) + "% • Offset " + root.audio_offset + "s)"
+                                    : "No audio track attached — attach from Assets Sidebar";
+                                color: root.audio_file_path != "" ? #d8b4fe : #64748b;
+                                font-size: 10px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // RIGHT: PROPERTIES INSPECTOR
+            if root.show_right_panel : Rectangle {
+                width: 310px;
+                background: #020617;
+                border-width: 1px;
+                border-color: #1e293b;
+
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 12px;
+
+                    // Inspector Tabs
+                    HorizontalLayout {
+                        spacing: 6px;
+                        StudioPillButton {
+                            horizontal-stretch: 1;
+                            label: "Export";
+                            active: root.inspector_tab == 0;
+                            clicked => { root.inspector_tab = 0; }
+                        }
+                        StudioPillButton {
+                            horizontal-stretch: 1;
+                            label: "Engine";
+                            active: root.inspector_tab == 1;
+                            clicked => { root.inspector_tab = 1; }
+                        }
+                        StudioPillButton {
+                            horizontal-stretch: 1;
+                            label: "Audio";
+                            active: root.inspector_tab == 2;
+                            clicked => { root.inspector_tab = 2; }
+                        }
+                    }
+
+                    ScrollView {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            spacing: 14px;
+
+                            // TAB 0: EXPORT SETTINGS
+                            if root.inspector_tab == 0 : VerticalLayout {
+                                spacing: 12px;
+
+                                Text { text: "RESOLUTION PRESET"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "720p HD";
+                                        active: root.resolution_preset == "720p";
+                                        clicked => { root.set_resolution("720p", 1280, 720); }
+                                    }
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "1080p FHD";
+                                        active: root.resolution_preset == "1080p";
+                                        clicked => { root.set_resolution("1080p", 1920, 1080); }
+                                    }
+                                }
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "1440p 2K";
+                                        active: root.resolution_preset == "1440p";
+                                        clicked => { root.set_resolution("1440p", 2560, 1440); }
+                                    }
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "4K UHD";
+                                        active: root.resolution_preset == "4k";
+                                        clicked => { root.set_resolution("4k", 3840, 2160); }
+                                    }
+                                }
+
+                                Text { text: "FRAME RATE"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "24 FPS";
+                                        active: root.fps == 24;
+                                        clicked => { root.set_fps(24); }
+                                    }
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "30 FPS";
+                                        active: root.fps == 30;
+                                        clicked => { root.set_fps(30); }
+                                    }
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "60 FPS";
+                                        active: root.fps == 60;
+                                        clicked => { root.set_fps(60); }
+                                    }
+                                }
+
+                                Text { text: "VIDEO CONTAINER / CODEC"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "MP4 H.264";
+                                        active: root.format == "mp4";
+                                        clicked => { root.set_format("mp4"); }
+                                    }
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "WebM VP9";
+                                        active: root.format == "webm";
+                                        clicked => { root.set_format("webm"); }
+                                    }
+                                    StudioPillButton {
+                                        horizontal-stretch: 1;
+                                        label: "ProRes";
+                                        active: root.format == "mov";
+                                        clicked => { root.set_format("mov"); }
+                                    }
+                                }
+
+                                HorizontalLayout {
+                                    alignment: space-between;
+                                    Text { text: "DURATION"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                    Text {
+                                        text: (Math.round(root.duration_seconds * 10) / 10) + "s (" + Math.round(root.duration_seconds * root.fps) + " frames)";
+                                        color: #60a5fa;
+                                        font-size: 10px;
+                                        font-weight: 700;
+                                    }
+                                }
+                                Slider {
+                                    minimum: 1.0;
+                                    maximum: 60.0;
+                                    value <=> root.duration_seconds;
+                                    changed(v) => { root.set_duration(Math.round(v * 2.0) / 2.0); }
+                                }
+
+                                Text { text: "SAVE DESTINATION"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    LineEdit {
+                                        horizontal-stretch: 1;
+                                        text <=> root.output_filename;
+                                    }
+                                    StudioPillButton {
+                                        label: "Browse";
+                                        clicked => { root.choose_save_destination(); }
+                                    }
+                                }
+                                if root.output_directory != "" : Text {
+                                    text: root.output_directory + "/" + root.output_filename + "." + root.format;
+                                    color: #64748b;
+                                    font-size: 9px;
+                                    overflow: elide;
+                                }
+                            }
+
+                            // TAB 1: ENGINE STRATEGY
+                            if root.inspector_tab == 1 : VerticalLayout {
+                                spacing: 10px;
+                                Text { text: "RENDERING PIPELINE STRATEGY"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+
+                                Rectangle {
+                                    border-radius: 12px;
+                                    background: root.strategy == "adapter" ? #1e1b4b : #0f172a;
+                                    border-width: 1px;
+                                    border-color: root.strategy == "adapter" ? #6366f1 : #1e293b;
+                                    VerticalLayout {
+                                        padding: 10px;
+                                        spacing: 4px;
+                                        Text { text: "Strategy A: Deterministic Adapter"; color: #c7d2fe; font-size: 11px; font-weight: 700; }
+                                        Text {
+                                            text: "Evaluates window.__HTML_MOTION_STUDIO__.seek(t) for exact frame-accurate canvas, GSAP, and Three.js animations.";
+                                            color: #94a3b8;
+                                            font-size: 10px;
+                                            wrap: word-wrap;
+                                        }
+                                    }
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.set_strategy("adapter"); }
+                                    }
+                                }
+
+                                Rectangle {
+                                    border-radius: 12px;
+                                    background: root.strategy == "compatibility" ? #172554 : #0f172a;
+                                    border-width: 1px;
+                                    border-color: root.strategy == "compatibility" ? #3b82f6 : #1e293b;
+                                    VerticalLayout {
+                                        padding: 10px;
+                                        spacing: 4px;
+                                        Text { text: "Strategy B: Compatibility CDP Capture"; color: #bfdbfe; font-size: 11px; font-weight: 700; }
+                                        Text {
+                                            text: "Drives headless Chromium over CDP and streams PNG frames directly into FFmpeg stdin pipe (zero temp disk frames).";
+                                            color: #94a3b8;
+                                            font-size: 10px;
+                                            wrap: word-wrap;
+                                        }
+                                    }
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.set_strategy("compatibility"); }
+                                    }
+                                }
+                            }
+
+                            // TAB 2: AUDIO PROPERTIES
+                            if root.inspector_tab == 2 : VerticalLayout {
+                                spacing: 12px;
+
+                                HorizontalLayout {
+                                    alignment: space-between;
+                                    Text { text: "MASTER VOLUME"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                    Text { text: Math.round(root.audio_volume * 100) + "%"; color: #d8b4fe; font-size: 10px; font-weight: 700; }
+                                }
+                                Slider {
+                                    minimum: 0.0;
+                                    maximum: 2.0;
+                                    value <=> root.audio_volume;
+                                }
+
+                                HorizontalLayout {
+                                    alignment: space-between;
+                                    Text { text: "FADE IN (s)"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                    Text { text: (Math.round(root.audio_fade_in * 10) / 10) + "s"; color: #cbd5e1; font-size: 10px; }
+                                }
+                                Slider {
+                                    minimum: 0.0;
+                                    maximum: 5.0;
+                                    value <=> root.audio_fade_in;
+                                }
+
+                                HorizontalLayout {
+                                    alignment: space-between;
+                                    Text { text: "FADE OUT (s)"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                    Text { text: (Math.round(root.audio_fade_out * 10) / 10) + "s"; color: #cbd5e1; font-size: 10px; }
+                                }
+                                Slider {
+                                    minimum: 0.0;
+                                    maximum: 5.0;
+                                    value <=> root.audio_fade_out;
+                                }
+
+                                HorizontalLayout {
+                                    alignment: space-between;
+                                    Text { text: "START DELAY OFFSET (s)"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+                                    Text { text: (Math.round(root.audio_offset * 10) / 10) + "s"; color: #cbd5e1; font-size: 10px; }
+                                }
+                                Slider {
+                                    minimum: 0.0;
+                                    maximum: root.duration_seconds;
+                                    value <=> root.audio_offset;
+                                }
+                            }
+                        }
+                    }
+
+                    // Bottom Render CTA
+                    StudioPillButton {
+                        height: 40px;
+                        label: root.is_exporting ? "Rendering..." : "Render " + root.format + " Video";
+                        primary: true;
+                        disabled: root.is_exporting;
+                        clicked => { root.start_export(); }
+                    }
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // RECENT PROJECTS POPOVER
+    // ============================================================
+    if root.show_recents_popover : Rectangle {
+        x: 320px;
+        y: 54px;
+        width: 320px;
+        height: 260px;
+        border-radius: 12px;
+        background: #0f172a;
+        border-width: 1px;
+        border-color: #334155;
+
+        VerticalLayout {
+            padding: 10px;
+            spacing: 6px;
+            HorizontalLayout {
+                alignment: space-between;
+                Text { text: "RECENT PROJECTS (SQLITE)"; color: #64748b; font-size: 10px; font-weight: 800; }
+                StudioPillButton { height: 22px; label: "✕"; clicked => { root.show_recents_popover = false; } }
+            }
+            ScrollView {
+                vertical-stretch: 1;
+                VerticalLayout {
+                    spacing: 4px;
+                    for rec in root.recent_projects : Rectangle {
+                        height: 42px;
+                        border-radius: 8px;
+                        background: #020617;
+                        VerticalLayout {
+                            padding: 6px;
+                            Text { text: rec.title; color: #f8fafc; font-size: 11px; font-weight: 600; overflow: elide; }
+                            Text { text: rec.file_path; color: #64748b; font-size: 9px; overflow: elide; }
+                        }
+                        TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.show_recents_popover = false;
+                                root.open_recent_project(rec.file_path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // NEW PROJECT MODAL (12 TEMPLATES)
+    // ============================================================
+    if root.show_new_project_modal : Rectangle {
+        width: 100%;
+        height: 100%;
+        background: #020617cc;
+
+        Rectangle {
+            width: 680px;
+            height: 520px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            border-radius: 18px;
+            background: #0f172a;
+            border-width: 1px;
+            border-color: #334155;
+
+            VerticalLayout {
+                padding: 20px;
+                spacing: 14px;
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: "Create New Motion Project"; color: #ffffff; font-size: 16px; font-weight: 800; }
+                    StudioPillButton { label: "Close"; clicked => { root.show_new_project_modal = false; } }
+                }
+
+                LineEdit {
+                    text <=> root.new_project_title;
+                    placeholder-text: "Project Name (e.g. Social Video Ad 60fps)";
+                }
+
+                Text { text: "STARTER TEMPLATES (12 BUILT-IN SUITES)"; color: #94a3b8; font-size: 10px; font-weight: 700; }
+
+                ScrollView {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        spacing: 6px;
+                        for tmpl in root.templates : Rectangle {
+                            height: 62px;
+                            border-radius: 10px;
+                            background: root.selected_template_id == tmpl.id ? #1e3a8a80 : #020617;
+                            border-width: 1px;
+                            border-color: root.selected_template_id == tmpl.id ? #3b82f6 : #1e293b;
+                            VerticalLayout {
+                                padding: 10px;
+                                spacing: 3px;
+                                HorizontalLayout {
+                                    alignment: space-between;
+                                    Text { text: tmpl.name; color: #f8fafc; font-size: 12px; font-weight: 700; }
+                                    Text { text: tmpl.duration + "s • " + tmpl.category; color: #60a5fa; font-size: 10px; }
+                                }
+                                Text { text: tmpl.description; color: #94a3b8; font-size: 10px; overflow: elide; }
+                            }
+                            TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.selected_template_id = tmpl.id; }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    alignment: end;
+                    spacing: 8px;
+                    StudioPillButton { label: "Cancel"; clicked => { root.show_new_project_modal = false; } }
+                    StudioPillButton {
+                        label: "Create Project";
+                        primary: true;
+                        clicked => {
+                            root.create_project(root.new_project_title, root.selected_template_id);
+                            root.show_new_project_modal = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // MOTION CODE EDITOR MODAL
+    // ============================================================
+    if root.show_code_editor : Rectangle {
+        width: 100%;
+        height: 100%;
+        background: #020617cc;
+
+        Rectangle {
+            width: parent.width * 0.84;
+            height: parent.height * 0.84;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            border-radius: 16px;
+            background: #0f172a;
+            border-width: 1px;
+            border-color: #334155;
+
+            VerticalLayout {
+                padding: 14px;
+                spacing: 10px;
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Text { text: "Motion Code Editor"; color: #ffffff; font-size: 14px; font-weight: 800; vertical-alignment: center; }
+                        StudioPillButton { label: "HTML"; active: root.code_tab == 0; clicked => { root.code_tab = 0; } }
+                        StudioPillButton { label: "CSS"; active: root.code_tab == 1; clicked => { root.code_tab = 1; } }
+                        StudioPillButton { label: "JavaScript"; active: root.code_tab == 2; clicked => { root.code_tab = 2; } }
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        StudioPillButton { label: "Format"; clicked => { root.format_code_editor(); } }
+                        StudioPillButton { label: "Apply to Preview"; primary: true; clicked => { root.apply_code_editor(); } }
+                        StudioPillButton { label: "Close"; clicked => { root.show_code_editor = false; } }
+                    }
+                }
+
+                if root.code_tab == 0 : TextEdit {
+                    vertical-stretch: 1;
+                    text <=> root.editor_html;
+                    font-size: 12px;
+                }
+                if root.code_tab == 1 : TextEdit {
+                    vertical-stretch: 1;
+                    text <=> root.editor_css;
+                    font-size: 12px;
+                }
+                if root.code_tab == 2 : TextEdit {
+                    vertical-stretch: 1;
+                    text <=> root.editor_js;
+                    font-size: 12px;
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // EXPORT PROGRESS MODAL
+    // ============================================================
+    if root.is_exporting : Rectangle {
+        width: 100%;
+        height: 100%;
+        background: #020617cc;
+
+        Rectangle {
+            width: 460px;
+            height: 230px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            border-radius: 18px;
+            background: #0f172a;
+            border-width: 1px;
+            border-color: #334155;
+
+            VerticalLayout {
+                padding: 20px;
+                spacing: 14px;
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    VerticalLayout {
+                        Text { text: "Native Rust Rendering Pipeline"; color: #ffffff; font-size: 14px; font-weight: 800; }
+                        Text { text: "Chromium CDP frame stepping -> FFmpeg pipe"; color: #94a3b8; font-size: 11px; }
+                    }
+                    StudioPillButton { label: "Cancel"; danger: true; clicked => { root.cancel_export(); } }
+                }
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: root.export_pct + "%"; color: #60a5fa; font-size: 22px; font-weight: 900; }
+                    Text { text: root.export_message; color: #cbd5e1; font-size: 11px; vertical-alignment: center; overflow: elide; }
+                }
+
+                Rectangle {
+                    height: 10px;
+                    border-radius: 5px;
+                    background: #020617;
+                    border-width: 1px;
+                    border-color: #1e293b;
+                    Rectangle {
+                        x: 0px;
+                        y: 0px;
+                        width: parent.width * clamp(root.export_pct / 100.0, 0.02, 1.0);
+                        height: parent.height;
+                        border-radius: 5px;
+                        background: @linear-gradient(90deg, #2563eb 0%, #6366f1 50%, #06b6d4 100%);
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 12px;
+                    Text { text: "Frames: " + root.export_current_frame + " / " + root.export_total_frames; color: #e2e8f0; font-size: 11px; }
+                    Text { text: "Elapsed: " + root.export_elapsed_label; color: #e2e8f0; font-size: 11px; }
+                    Text { text: "Speed: " + root.export_fps_label; color: #34d399; font-size: 11px; }
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // EXPORT SUCCESS MODAL
+    // ============================================================
+    if root.show_success_modal : Rectangle {
+        width: 100%;
+        height: 100%;
+        background: #020617cc;
+
+        Rectangle {
+            width: 500px;
+            height: 270px;
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            border-radius: 18px;
+            background: #0f172a;
+            border-width: 1px;
+            border-color: #10b98180;
+
+            VerticalLayout {
+                padding: 20px;
+                spacing: 14px;
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    VerticalLayout {
+                        Text { text: "Video Export Successful!"; color: #34d399; font-size: 16px; font-weight: 800; }
+                        Text { text: "Verified with local FFprobe • Ready for playback"; color: #94a3b8; font-size: 11px; }
+                    }
+                    StudioPillButton { label: "Close"; clicked => { root.show_success_modal = false; } }
+                }
+
+                Rectangle {
+                    border-radius: 12px;
+                    background: #020617;
+                    border-width: 1px;
+                    border-color: #1e293b;
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 8px;
+                        Text { text: root.success_filename; color: #f8fafc; font-size: 12px; font-weight: 700; }
+                        HorizontalLayout {
+                            alignment: space-between;
+                            Text { text: "Codec: " + root.success_codec; color: #cbd5e1; font-size: 11px; }
+                            Text { text: "Size: " + root.success_dimensions; color: #cbd5e1; font-size: 11px; }
+                            Text { text: "FPS: " + root.success_fps; color: #cbd5e1; font-size: 11px; }
+                            Text { text: root.success_size; color: #60a5fa; font-size: 11px; font-weight: 700; }
+                        }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    StudioPillButton {
+                        horizontal-stretch: 1;
+                        height: 38px;
+                        label: "▶ Open in Player";
+                        primary: true;
+                        clicked => { root.open_exported_video(); }
+                    }
+                    StudioPillButton {
+                        horizontal-stretch: 1;
+                        height: 38px;
+                        label: "Show in Folder";
+                        clicked => { root.show_exported_in_folder(); }
+                    }
+                }
+            }
+        }
+    }
+}

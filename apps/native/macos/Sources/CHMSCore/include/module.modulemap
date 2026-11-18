@@ -1,0 +1,4 @@
+module CHMSCore {
+    header "hms_core.h"
+    export *
+}

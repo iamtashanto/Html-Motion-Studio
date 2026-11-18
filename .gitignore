@@ -59,6 +59,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Native Rust & Swift build artifacts
+apps/native/target/
+apps/native/dist/
+apps/native/macos/.build/
+apps/native/macos/.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
 # OS & Editor
 .DS_Store
 Thumbs.db

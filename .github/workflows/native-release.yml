@@ -1,0 +1,166 @@
+name: Native Studio Release (Rust Core + SwiftUI macOS + Slint Win/Linux)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach native binaries to (e.g. v2.0.0)'
+        required: true
+        default: 'v2.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-swift:
+    name: Build Native macOS (SwiftUI + Rust Core)
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Rust Core unit tests
+        working-directory: apps/native
+        run: cargo test -p hms-core --lib -- --skip end_to_end
+
+      - name: Build macOS SwiftUI + Rust Core .app bundle
+        run: |
+          chmod +x apps/native/scripts/build-macos.sh
+          ./apps/native/scripts/build-macos.sh
+
+      - name: Package macOS ZIP and SHA-256
+        working-directory: apps/native/dist/macos
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+            TAG="${TAG#v}"
+          fi
+          ZIP_NAME="HTML-Motion-Studio-${TAG}-native-macos-arm64.zip"
+          ditto -c -k --sequesterRsrc --keepParent "HTML Motion Studio.app" "$ZIP_NAME"
+          shasum -a 256 "$ZIP_NAME" > "${ZIP_NAME}.sha256"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-macos-arm64
+          path: |
+            apps/native/dist/macos/*.zip
+            apps/native/dist/macos/*.sha256
+
+  build-windows-rust:
+    name: Build Native Windows (Rust Slint UI + Rust Core)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Rust Core unit tests
+        working-directory: apps/native
+        run: cargo test -p hms-core --lib -- --skip end_to_end
+
+      - name: Build Native Windows Release Binary
+        working-directory: apps/native
+        run: cargo build --release -p hms-desktop-rust
+
+      - name: Package Windows ZIP and SHA-256
+        shell: pwsh
+        working-directory: apps/native
+        run: |
+          $tag = "$env:GITHUB_REF_NAME".TrimStart('v')
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}".TrimStart('v')
+          }
+          New-Item -ItemType Directory -Force -Path dist/windows | Out-Null
+          Copy-Item target/release/hms-desktop-rust.exe "dist/windows/HTML-Motion-Studio.exe"
+          $zipName = "HTML-Motion-Studio-$tag-native-windows-x64.zip"
+          Compress-Archive -Path "dist/windows/HTML-Motion-Studio.exe" -DestinationPath "dist/windows/$zipName" -Force
+          $hash = (Get-FileHash "dist/windows/$zipName" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $zipName" | Out-File -Encoding ascii "dist/windows/$zipName.sha256"
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-windows-x64
+          path: |
+            apps/native/dist/windows/*.zip
+            apps/native/dist/windows/*.sha256
+
+  build-linux-rust:
+    name: Build Native Linux (Rust Slint UI + Rust Core)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux GUI build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libfontconfig1-dev libxkbcommon-dev libwayland-dev libxcb-shape0-dev libxcb-xfixes0-dev libgl1-mesa-dev
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Rust Core unit tests
+        working-directory: apps/native
+        run: cargo test -p hms-core --lib -- --skip end_to_end
+
+      - name: Build Native Linux Release Binary
+        working-directory: apps/native
+        run: cargo build --release -p hms-desktop-rust
+
+      - name: Package Linux tar.gz and SHA-256
+        working-directory: apps/native
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+            TAG="${TAG#v}"
+          fi
+          mkdir -p dist/linux
+          cp target/release/hms-desktop-rust dist/linux/html-motion-studio
+          TAR_NAME="HTML-Motion-Studio-${TAG}-native-linux-x64.tar.gz"
+          tar -czf "dist/linux/$TAR_NAME" -C dist/linux html-motion-studio
+          (cd dist/linux && sha256sum "$TAR_NAME" > "${TAR_NAME}.sha256")
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-linux-x64
+          path: |
+            apps/native/dist/linux/*.tar.gz
+            apps/native/dist/linux/*.sha256
+
+  attach-to-release:
+    name: Attach Native Binaries to GitHub Release
+    needs: [build-macos-swift, build-windows-rust, build-linux-rust]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Upload assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber --repo "${{ github.repository }}"
+          else
+            gh release create "$TAG" release-assets/* --title "HTML Motion Studio ${TAG}" --generate-notes --repo "${{ github.repository }}"
+          fi

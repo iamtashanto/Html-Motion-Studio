@@ -1,0 +1,16 @@
+[package]
+name = "hms-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "C-ABI FFI bridge exposing hms-core to the native macOS SwiftUI frontend"
+
+[lib]
+name = "hms_ffi"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+hms-core = { path = "../hms-core" }
+libc.workspace = true
+serde.workspace = true
+serde_json.workspace = true

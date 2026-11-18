@@ -1,0 +1,16 @@
+[package]
+name = "hms-desktop-rust"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native Rust Studio UI for Windows and Linux powered by Slint + hms-core"
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+hms-core = { path = "../hms-core" }
+regex.workspace = true
+slint.workspace = true
+
+[build-dependencies]
+slint-build.workspace = true

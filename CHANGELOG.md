@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [2.0.0] - 2026-11-18
+
+### Product Overview
+Major native architecture release introducing **HTML Motion Studio Native (`apps/native`)** — a full native rewrite combining a **shared Rust Core engine**, a **native SwiftUI + AppKit + WKWebView macOS application**, and a **GPU-accelerated Rust Slint UI for Windows & Linux**.
+
+### Added
+
+#### Shared Rust Core Engine (`apps/native/crates/hms-core`)
+- **Pure-Rust CDP Rendering Engine**: Built-in RFC 6455 WebSocket Chrome DevTools Protocol client driving headless Chromium/Chrome/Edge deterministically for Strategy A (`window.__HTML_MOTION_STUDIO__`) and Strategy B (CSS Web Animations API & virtual clock).
+- **Zero-Disk-I/O FFmpeg Streaming Pipe**: Streams captured PNG frames directly from memory into FFmpeg `stdin` (`image2pipe`) supporting MP4 (`libx264`), WebM (`libvpx-vp9`), Apple ProRes 4444 (`prores_ks`), full audio filter graph (`volume`, `adelay`, `afade`), and local `ffprobe` validation.
+- **Native SQLite Persistence (`rusqlite` bundled)**: Zero-WASM, schema-compatible `recent_projects` and `export_history` database.
+- **Security-Hardened ZIP & Project Manager**: Supports `.html`, `.zip` (with zip-slip, depth, file-count, and decompression-bomb guards), project folders, and `.hmsproj` persistence plus asset URI rewriting and all 12 built-in starter templates.
+
+#### Native Platform UIs & FFI Bridge
+- **C-ABI FFI Bridge (`apps/native/crates/hms-ffi`)**: Thread-safe static library (`libhms_ffi.a`) with streaming progress callbacks and `CHMSCore` Clang modulemap for Swift 6 interop.
+- **Native macOS App (`apps/native/macos`)**: Pure SwiftUI + AppKit + `WKWebView` + `AVAudioPlayer` studio packaged as a **3.7 MB** native `.app` bundle (down from ~200 MB Electron).
+- **Native Windows & Linux App (`apps/native/crates/hms-desktop-rust`)**: Pure Rust + Slint 1.18 GPU-accelerated studio UI compiled into a standalone ~16 MB native binary.
+- **CI/CD Native Release Workflow**: Added `.github/workflows/native-release.yml` to build and publish native binaries across macOS, Windows, and Linux automatically on version tags.
+
+---
+
 ## [1.0.0] - 2026-10-30
 
 ### Product Overview

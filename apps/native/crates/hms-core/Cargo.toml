@@ -1,0 +1,20 @@
+[package]
+name = "hms-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared native Rust core engine for HTML Motion Studio (macOS SwiftUI + Windows/Linux Slint)"
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+chrono.workspace = true
+crc32fast.workspace = true
+flate2.workspace = true
+image.workspace = true
+regex.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+walkdir.workspace = true
